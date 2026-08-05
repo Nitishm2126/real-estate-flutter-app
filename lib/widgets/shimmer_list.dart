@@ -54,7 +54,7 @@ class _ShimmerCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -62,21 +62,21 @@ class _ShimmerCard extends StatelessWidget {
                 Row(
                   children: [
                     _Bone(width: 140, height: 14),
-                    const Spacer(),
+                    Spacer(),
                     _Bone(width: 60, height: 12),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _Bone(width: 120, height: 12),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 _Bone(width: 100, height: 12),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 _Bone(width: 140, height: 12),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   children: [
                     _Bone(width: 64, height: 22, radius: AppRadius.full),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     _Bone(width: 80, height: 22, radius: AppRadius.full),
                   ],
                 ),

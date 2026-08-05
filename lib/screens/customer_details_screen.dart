@@ -502,7 +502,7 @@ class _NotesCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.notes_rounded, size: 16, color: AppColors.goldDark),
+              const Icon(Icons.notes_rounded, size: 16, color: AppColors.goldDark),
               const SizedBox(width: 8),
               Text(
                 'Notes',

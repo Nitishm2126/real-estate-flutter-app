@@ -98,7 +98,7 @@ class EmptyState extends StatelessWidget {
               // Decorative arrow hint
               Column(
                 children: [
-                  Icon(Icons.keyboard_arrow_down_rounded,
+                  const Icon(Icons.keyboard_arrow_down_rounded,
                       color: AppColors.gold, size: 32)
                       .animate(onPlay: (c) => c.repeat())
                       .moveY(
