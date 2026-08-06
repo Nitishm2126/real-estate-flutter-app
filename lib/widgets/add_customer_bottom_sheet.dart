@@ -103,7 +103,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
       );
 
       if (_isEditing) {
-        await service.updateCustomer(customer, originalCustomer: widget.existingCustomer);
+        await service.updateCustomer(customer, originalCustomer: widget.existingCustomer!);
       } else {
         await service.addCustomer(customer);
       }

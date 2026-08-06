@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../screens/pdf_report_screen.dart';
 import '../services/customer_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
@@ -121,7 +122,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             // ── Analytics Cards ──────────────────────────────────
             SliverToBoxAdapter(child: _AnalyticsSection(service: service)),
 
-            // ── Open Excel Sheet ─────────────────────────────────
+            // ── Open Excel Sheet + PDF Report ─────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.lg, AppSpacing.md, 0),
@@ -136,26 +137,81 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        final Uri url = Uri.parse('https://docs.google.com/spreadsheets/d/1m1V51vYkK5nU7hBrdOyQGf7kjM4ro2QJQLy5FY28QCk/edit?usp=drive_link');
-                        if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-                          if (context.mounted) _showSnackBar('Could not open Excel Sheet', isError: true);
-                        }
-                      },
-                      icon: const Icon(Icons.table_view_rounded, size: 18),
-                      label: Text(
-                        'Open Excel Sheet',
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),
+                    // ── Excel Sheet Button ──────────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final Uri url = Uri.parse('https://docs.google.com/spreadsheets/d/1m1V51vYkK5nU7hBrdOyQGf7kjM4ro2QJQLy5FY28QCk/edit?usp=drive_link');
+                          if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+                            if (context.mounted) _showSnackBar('Could not open Excel Sheet', isError: true);
+                          }
+                        },
+                        icon: const Icon(Icons.table_view_rounded, size: 18),
+                        label: Text(
+                          'Open Excel Sheet',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          foregroundColor: AppColors.primary,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                        ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        foregroundColor: AppColors.primary,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // ── PDF Report Button ───────────────────────────
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              transitionDuration: const Duration(milliseconds: 350),
+                              pageBuilder: (_, animation, __) => PdfReportScreen(
+                                customers: service.customers,
+                                totalCustomers: service.totalCustomers,
+                                bookedCustomers: service.bookedCustomers,
+                                registrationCompleted: service.registrationCompleted,
+                              ),
+                              transitionsBuilder: (_, animation, __, child) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0, 0.06),
+                                      end: Offset.zero,
+                                    ).animate(CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeOutCubic,
+                                    )),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                        label: Text(
+                          '📄 Generate PDF Report',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFB91C1C).withValues(alpha: 0.1),
+                          foregroundColor: const Color(0xFFB91C1C),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            side: BorderSide(color: const Color(0xFFB91C1C).withValues(alpha: 0.3)),
+                          ),
                         ),
                       ),
                     ),

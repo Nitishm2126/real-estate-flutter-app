@@ -29,9 +29,12 @@ extension RegistrationStatusX on RegistrationStatus {
 
 /// Core data model representing a single customer/lead record.
 ///
-/// The [id] field is a LOCAL-ONLY identifier generated from the customer's
-/// data fields. It does NOT exist in the Google Sheet. It is used only for
-/// Flutter list keys, Hero tags, and local lookups.
+/// The Google Sheet has NO ID column. The [id] field is a LOCAL-ONLY
+/// deterministic identifier generated from the customer's data fields.
+/// Same data → same ID, so the ID is stable across syncs.
+///
+/// GAS identifies rows by field matching (name + phone + place + lead + date).
+/// Flutter identifies records by this local [id] for list keys and Hero tags.
 class Customer {
   final String? id;
   final String customerName;
@@ -57,7 +60,8 @@ class Customer {
     this.registrationStatus = RegistrationStatus.pending,
   });
 
-  String get formattedDate => date != null ? DateFormat('dd MMM yyyy').format(date!) : '-';
+  String get formattedDate =>
+      date != null ? DateFormat('dd MMM yyyy').format(date!) : '-';
 
   /// Clean, dialable phone number (digits only, keeps leading + if present).
   String get dialablePhoneNumber {
@@ -70,13 +74,21 @@ class Customer {
   /// Formatted date string for API requests (yyyy-MM-dd).
   String get dateForApi {
     if (date == null) return '';
-    return '${date!.year.toString().padLeft(4, '0')}-${date!.month.toString().padLeft(2, '0')}-${date!.day.toString().padLeft(2, '0')}';
+    return '${date!.year.toString().padLeft(4, '0')}-'
+        '${date!.month.toString().padLeft(2, '0')}-'
+        '${date!.day.toString().padLeft(2, '0')}';
   }
 
   /// Generate a deterministic local ID from the customer's identifying fields.
   /// Same data = same ID, so the ID is stable across syncs.
-  static String generateLocalId(String name, String phone, String place,
-      String lead, String dateStr) {
+  /// This is the ONLY stable identifier since GAS has no ID column.
+  static String generateLocalId(
+    String name,
+    String phone,
+    String place,
+    String lead,
+    String dateStr,
+  ) {
     final key = '${name.trim().toLowerCase()}|'
         '${phone.trim().toLowerCase()}|'
         '${place.trim().toLowerCase()}|'
@@ -111,9 +123,7 @@ class Customer {
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Local JSON serialization
-  // ---------------------------------------------------------------------
+  // ── Local JSON serialization ──────────────────────────────────
 
   Map<String, dynamic> toJson() => {
         'id': id ?? '',
@@ -136,21 +146,23 @@ class Customer {
       place: json['place'] as String? ?? '',
       leadGivenBy: json['leadGivenBy'] as String? ?? '',
       siteVisited: json['siteVisited'] as String? ?? '',
-      date: json['date'] != null && json['date'].toString().isNotEmpty ? DateTime.tryParse(json['date'].toString()) : null,
+      date: json['date'] != null && json['date'].toString().isNotEmpty
+          ? DateTime.tryParse(json['date'].toString())
+          : null,
       notes: json['notes'] as String? ?? '',
-      bookingStatus: BookingStatusX.fromLabel(json['bookingStatus'] as String? ?? 'Pending'),
-      registrationStatus:
-          RegistrationStatusX.fromLabel(json['registrationStatus'] as String? ?? 'Pending'),
+      bookingStatus: BookingStatusX.fromLabel(
+          json['bookingStatus'] as String? ?? 'Pending'),
+      registrationStatus: RegistrationStatusX.fromLabel(
+          json['registrationStatus'] as String? ?? 'Pending'),
     );
   }
 
-  // ---------------------------------------------------------------------
-  // Google Sheet JSON mapping
+  // ── Google Sheet JSON mapping ─────────────────────────────────
   //
-  // The sheet has NO ID column. Columns are:
+  // Sheet columns (A–I, NO ID column):
   // A: Customer Name | B: Phone Number | C: Place | D: Lead Given by |
-  // E: Site Visited | F: Date | G: Notes | H: Booking Status | I: Reg Status
-  // ---------------------------------------------------------------------
+  // E: Site Visited  | F: Date         | G: Notes | H: Booking Status |
+  // I: Registration Status
 
   /// JSON for sending to Google Apps Script (create / update).
   Map<String, dynamic> toSheetJson() {
@@ -176,8 +188,9 @@ class Customer {
       json[key.trim()] = value;
     });
 
+    // Parse date
     DateTime? parsedDate;
-    final dateString = json['Date']?.toString().trim() ?? "";
+    final dateString = json['Date']?.toString().trim() ?? '';
     if (dateString.isNotEmpty) {
       try {
         parsedDate = DateFormat('yyyy-MM-dd').parse(dateString);
@@ -186,12 +199,14 @@ class Customer {
       }
     }
 
-    final name = json['Customer Name']?.toString().trim() ?? "";
-    final phone = json['Phone Number']?.toString().trim() ?? "";
-    final place = json['Place']?.toString().trim() ?? "";
-    final lead = json['Lead Given by']?.toString().trim() ?? "";
+    final name = json['Customer Name']?.toString().trim() ?? '';
+    final phone = json['Phone Number']?.toString().trim() ?? '';
+    final place = json['Place']?.toString().trim() ?? '';
+    final lead = json['Lead Given by']?.toString().trim() ?? '';
     final dateStr = parsedDate != null
-        ? '${parsedDate.year}-${parsedDate.month.toString().padLeft(2, '0')}-${parsedDate.day.toString().padLeft(2, '0')}'
+        ? '${parsedDate.year}-'
+            '${parsedDate.month.toString().padLeft(2, '0')}-'
+            '${parsedDate.day.toString().padLeft(2, '0')}'
         : '';
 
     // Generate a deterministic local ID from the fields
@@ -203,11 +218,13 @@ class Customer {
       phoneNumber: phone,
       place: place,
       leadGivenBy: lead,
-      siteVisited: json['Site Visited']?.toString().trim() ?? "",
+      siteVisited: json['Site Visited']?.toString().trim() ?? '',
       date: parsedDate,
-      notes: json['Notes']?.toString().trim() ?? "",
-      bookingStatus: BookingStatusX.fromLabel(json['Booking Status']?.toString() ?? ""),
-      registrationStatus: RegistrationStatusX.fromLabel(json['Registration Status']?.toString() ?? ""),
+      notes: json['Notes']?.toString().trim() ?? '',
+      bookingStatus:
+          BookingStatusX.fromLabel(json['Booking Status']?.toString() ?? ''),
+      registrationStatus: RegistrationStatusX.fromLabel(
+          json['Registration Status']?.toString() ?? ''),
     );
   }
 }
