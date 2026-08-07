@@ -37,6 +37,10 @@ class CustomerService extends ChangeNotifier {
   /// Local IDs of customers currently being deleted — prevents duplicate calls.
   final Set<String> _pendingDeleteIds = {};
 
+  /// Permanently tracks deleted IDs during this session to prevent GAS stale cache
+  /// from re-injecting them into the local list during background syncs.
+  final Set<String> _permanentlyDeletedIds = {};
+
   bool get isLoading => _isLoading;
   bool get isSyncing => _isSyncing;
   SortMode get sortMode => _sortMode;
@@ -169,12 +173,13 @@ class CustomerService extends ChangeNotifier {
   Future<void> _fetchFromSheet() async {
     final remote = await _apiService.fetchAll();
 
-    // Filter blank rows and exclude customers being deleted
+    // Filter blank rows and exclude customers being deleted or permanently deleted
     _customers = remote.where((c) {
       if (c.customerName.trim().isEmpty && c.phoneNumber.trim().isEmpty) {
         return false;
       }
       if (_pendingDeleteIds.contains(c.id)) return false;
+      if (_permanentlyDeletedIds.contains(c.id)) return false;
       return true;
     }).toList();
 
@@ -246,24 +251,15 @@ class CustomerService extends ChangeNotifier {
 
   // ─── UPDATE ───────────────────────────────────────────────────
 
-  /// Updates an existing customer.
-  ///
-  /// [customer] = the new (edited) values.
-  /// [originalCustomer] = the pre-edit snapshot — REQUIRED so GAS can find
-  ///   the exact row by matching the original field values.
-  Future<void> updateCustomer(
-    Customer customer, {
-    required Customer originalCustomer,
-  }) async {
-    debugPrint('[CS] updateCustomer: ${originalCustomer.customerName} → ${customer.customerName}');
-    debugPrint('[CS] Original date: ${originalCustomer.dateForApi}');
-    debugPrint('[CS] New date: ${customer.dateForApi}');
+  /// Updates an existing customer using the backend ID.
+  Future<void> updateCustomer(Customer customer) async {
+    debugPrint('[CS] updateCustomer: ${customer.id} → ${customer.customerName}');
 
     _isSyncing = true;
     notifyListeners();
 
     try {
-      await _apiService.updateRow(customer, originalCustomer: originalCustomer);
+      await _apiService.updateRow(customer);
 
       // Reload to confirm the update and get fresh data
       await Future.delayed(const Duration(milliseconds: 700));
@@ -283,19 +279,14 @@ class CustomerService extends ChangeNotifier {
     final deleteId = customer.id ?? 'unknown';
 
     // Prevent duplicate API calls for the same customer
-    if (_pendingDeleteIds.contains(deleteId)) {
-      debugPrint('[CS] Delete already in progress for ${customer.customerName}');
+    if (_pendingDeleteIds.contains(deleteId) || _permanentlyDeletedIds.contains(deleteId)) {
+      debugPrint('[CS] Delete already processed/in-progress for $deleteId');
       return;
     }
 
-    debugPrint('[CS] deleteCustomer START: ${customer.customerName}');
-    debugPrint('[CS] Customer fields for GAS matching:');
-    debugPrint('[CS]   Name:  ${customer.customerName}');
-    debugPrint('[CS]   Phone: ${customer.phoneNumber}');
-    debugPrint('[CS]   Place: ${customer.place}');
-    debugPrint('[CS]   Lead:  ${customer.leadGivenBy}');
-    debugPrint('[CS]   Date:  ${customer.dateForApi}');
-    debugPrint('[CS] Count BEFORE: ${_customers.length}');
+    debugPrint('[CS] --- DELETE FLOW START ---');
+    debugPrint('[CS] Target Customer ID: $deleteId');
+    debugPrint('[CS] Local list length before delete: ${_customers.length}');
 
     _pendingDeleteIds.add(deleteId);
     _isSyncing = true;
@@ -304,19 +295,25 @@ class CustomerService extends ChangeNotifier {
 
     try {
       // ── Step 1: Call GAS delete API ──
+      debugPrint('[CS] Sending DELETE request to API...');
       await _apiService.deleteRow(customer);
-      debugPrint('[CS] GAS delete: SUCCESS');
+      debugPrint('[CS] API response: SUCCESS');
 
-      // ── Step 2: Remove from local cache immediately ──
+      // ── Step 2: Mark as permanently deleted to prevent stale cache fetches ──
+      _permanentlyDeletedIds.add(deleteId);
+
+      // ── Step 3: Remove from local cache immediately ──
       _customers.removeWhere((c) => c.id == deleteId);
       _recalculateStats();
-      debugPrint('[CS] Count AFTER local remove: ${_customers.length}');
+      debugPrint('[CS] Local list length after immediate remove: ${_customers.length}');
       notifyListeners(); // Instant UI update
 
-      // ── Step 3: Reload from sheet to confirm ──
+      // ── Step 4: Reload from sheet to confirm ──
+      debugPrint('[CS] Fetching fresh data to verify sync...');
       await Future.delayed(const Duration(milliseconds: 700));
       await _fetchFromSheet();
-      debugPrint('[CS] Count AFTER sheet reload: ${_customers.length}');
+      debugPrint('[CS] Local list length after refresh sync: ${_customers.length}');
+      debugPrint('[CS] --- DELETE FLOW COMPLETE ---');
     } catch (e) {
       debugPrint('[CS] deleteCustomer FAILED: $e');
       _errorMessage = 'Failed to delete: $e';

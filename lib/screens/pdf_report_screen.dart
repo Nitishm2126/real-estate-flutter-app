@@ -143,7 +143,7 @@ class PdfReportScreen extends StatelessWidget {
             children: [
               // Header row
               pw.TableRow(
-                decoration: pw.BoxDecoration(color: headerBg),
+                decoration: const pw.BoxDecoration(color: headerBg),
                 children: headers
                     .map(
                       (h) => pw.Padding(
@@ -187,7 +187,7 @@ class PdfReportScreen extends StatelessWidget {
                     _tagCell(
                       isCompleted ? 'Done' : 'Pending',
                       isCompleted ? completedBg : pendingBg,
-                      isCompleted ? PdfColor.fromInt(0xFF155CB6) : goldColor,
+                      isCompleted ? const PdfColor.fromInt(0xFF155CB6) : goldColor,
                     ),
                   ],
                 );
@@ -293,10 +293,10 @@ class PdfReportScreen extends StatelessWidget {
       children: [
         _summaryCard('Total Customers', '$totalCustomers', primaryColor),
         pw.SizedBox(width: 8),
-        _summaryCard('Booked', '$bookedCustomers', PdfColor.fromInt(0xFF15803D)),
+        _summaryCard('Booked', '$bookedCustomers', const PdfColor.fromInt(0xFF15803D)),
         pw.SizedBox(width: 8),
         _summaryCard('Reg. Completed', '$registrationCompleted',
-            PdfColor.fromInt(0xFF1E40AF)),
+            const PdfColor.fromInt(0xFF1E40AF)),
         pw.SizedBox(width: 8),
         _summaryCard('Pending',
             '${totalCustomers - bookedCustomers}', goldColor),
@@ -326,7 +326,7 @@ class PdfReportScreen extends StatelessWidget {
             pw.SizedBox(height: 2),
             pw.Text(
               label,
-              style: pw.TextStyle(
+              style: const pw.TextStyle(
                 color: PdfColors.white,
                 fontSize: 8,
               ),

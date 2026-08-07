@@ -103,7 +103,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
       );
 
       if (_isEditing) {
-        await service.updateCustomer(customer, originalCustomer: widget.existingCustomer!);
+        await service.updateCustomer(customer);
       } else {
         await service.addCustomer(customer);
       }
@@ -136,12 +136,12 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
+            content: const Row(
               children: [
-                const Icon(Icons.wifi_off_rounded,
+                Icon(Icons.wifi_off_rounded,
                     color: Colors.white, size: 18),
-                const SizedBox(width: 10),
-                const Expanded(child: Text('Unable to connect to API.')),
+                SizedBox(width: 10),
+                Expanded(child: Text('Unable to connect to API.')),
               ],
             ),
             backgroundColor: AppColors.statusRed,

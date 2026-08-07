@@ -110,10 +110,6 @@ class CustomerDetailsScreen extends StatelessWidget {
             actions: [
               Consumer<CustomerService>(
                 builder: (context, service, child) {
-                  final currentCustomer = service.customers.firstWhere(
-                    (c) => c.id == customer.id,
-                    orElse: () => customer,
-                  );
                   return IconButton(
                     onPressed: () => _openEditSheet(context),
                     icon: Container(

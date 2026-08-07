@@ -140,28 +140,28 @@ class CustomerCard extends StatelessWidget {
       elevation: 8,
       color: AppColors.surface,
       items: [
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'call',
           child: _MenuRow(
               icon: Icons.call_rounded,
               label: 'Call',
               color: AppColors.statusBooked),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'whatsapp',
           child: _MenuRow(
               icon: Icons.chat_rounded,
               label: 'WhatsApp',
-              color: const Color(0xFF25D366)),
+              color: Color(0xFF25D366)),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'edit',
           child: _MenuRow(
               icon: Icons.edit_rounded,
               label: 'Edit',
               color: AppColors.primary),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: 'delete',
           child: _MenuRow(
               icon: Icons.delete_rounded,
@@ -237,10 +237,12 @@ class CustomerCard extends StatelessWidget {
         final confirmed = await _confirmDelete(context);
         if (!confirmed) return false;
         
+        if (!context.mounted) return false;
+
         try {
           await context.read<CustomerService>().deleteCustomer(customer);
           if (context.mounted) onDeleted?.call();
-          return false; // Return false — the item is already removed from the list by deleteCustomer
+          return true; // Successfully deleted, allow dismiss animation to complete
         } catch (e) {
           if (context.mounted) {
             final errorMsg = e is ApiException ? e.message : e.toString();

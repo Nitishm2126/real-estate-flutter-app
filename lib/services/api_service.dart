@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../models/customer.dart';
@@ -16,20 +18,19 @@ class ApiService {
   // ─── FETCH ALL ─────────────────────────────────────────────────
 
   Future<List<Customer>> fetchAll() async {
-    final uri = Uri.parse(AppConstants.appsScriptApiUrl);
+    final uri = Uri.parse(AppConstants.appsScriptApiUrl.trim());
 
     try {
       debugLog('--- FETCH ALL ---');
-      debugLog('URL: $uri');
-
-      final response = await _client
-          .get(uri)
-          .timeout(const Duration(seconds: 30));
-
-      debugLog('Status: ${response.statusCode}');
+      
+      final response = await _requestWithRetry(
+        () => _client.get(uri),
+        'GET (fetchAll)',
+        uri,
+      );
 
       if (response.statusCode != 200) {
-        throw ApiException('fetchAll failed (${response.statusCode})');
+        throw ApiException('Server returned status: ${response.statusCode}');
       }
 
       final dynamic decoded = jsonDecode(response.body);
@@ -51,7 +52,8 @@ class ApiService {
     } catch (e, st) {
       debugLog('fetchAll ERROR: $e');
       debugLog('Stack: $st');
-      rethrow;
+      if (e is ApiException) rethrow;
+      throw ApiException('An unexpected error occurred');
     }
   }
 
@@ -72,60 +74,29 @@ class ApiService {
   }
 
   // ─── UPDATE ────────────────────────────────────────────────────
-  //
-  // GAS handleUpdate() reads:
-  //   body['originalCustomerName'] || body['Customer Name']
-  //   body['originalPhoneNumber']  || body['Phone Number']
-  //   body['originalPlace']        || body['Place']
-  //   body['originalLeadGivenBy']  || body['Lead Given by']
-  //   body['originalDate']         || body['Date']
-  //
-  // We MUST send the ORIGINAL values so GAS can find the existing row,
-  // plus the NEW values to overwrite it with.
-  Future<void> updateRow(
-    Customer customer, {
-    required Customer originalCustomer,
-  }) async {
+  Future<void> updateRow(Customer customer) async {
     final payload = <String, dynamic>{
       'action': 'update',
-      // ── NEW values (what to write) ──
+      'ID': customer.id,
       ...customer.toSheetJson(),
-      // ── ORIGINAL values (used by GAS to find the row) ──
-      'originalCustomerName': originalCustomer.customerName,
-      'originalPhoneNumber': originalCustomer.phoneNumber,
-      'originalPlace': originalCustomer.place,
-      'originalLeadGivenBy': originalCustomer.leadGivenBy,
-      'originalDate': originalCustomer.dateForApi,
     };
 
     debugLog('--- UPDATE ---');
-    debugLog('Original: ${originalCustomer.customerName} / ${originalCustomer.phoneNumber} / ${originalCustomer.dateForApi}');
-    debugLog('New: ${customer.customerName} / ${customer.phoneNumber}');
+    debugLog('Updating ID: ${customer.id}');
     debugLog('Payload: ${jsonEncode(payload)}');
 
     await _post(payload, 'updateRow');
   }
 
   // ─── DELETE ────────────────────────────────────────────────────
-  //
-  // GAS handleDelete() reads:
-  //   body['Customer Name'], body['Phone Number'],
-  //   body['Place'], body['Lead Given by'], body['Date']
-  //
-  // These EXACT field names must be sent — GAS does NOT use an 'ID' field.
   Future<void> deleteRow(Customer customer) async {
     final payload = <String, dynamic>{
       'action': 'delete',
-      'Customer Name': customer.customerName,
-      'Phone Number': customer.phoneNumber,
-      'Place': customer.place,
-      'Lead Given by': customer.leadGivenBy,
-      'Date': customer.dateForApi,
+      'ID': customer.id,
     };
 
     debugLog('--- DELETE ---');
-    debugLog('Customer: ${customer.customerName} / ${customer.phoneNumber}');
-    debugLog('Date: ${customer.dateForApi}');
+    debugLog('Deleting ID: ${customer.id}');
     debugLog('Payload: ${jsonEncode(payload)}');
 
     await _post(payload, 'deleteRow');
@@ -137,33 +108,30 @@ class ApiService {
     Map<String, dynamic> payload,
     String operation,
   ) async {
-    final uri = Uri.parse(AppConstants.appsScriptApiUrl);
+    final uri = Uri.parse(AppConstants.appsScriptApiUrl.trim());
     final body = jsonEncode(payload);
 
-    debugLog('POST [$operation] to: $uri');
+    debugLog('--- POST [$operation] ---');
 
-    final response = await _client
-        .post(
-          uri,
-          headers: {'Content-Type': 'text/plain;charset=utf-8'},
-          body: body,
-        )
-        .timeout(const Duration(seconds: 30));
+    final response = await _requestWithRetry(
+      () => _client.post(
+        uri,
+        headers: {'Content-Type': 'text/plain;charset=utf-8'},
+        body: body,
+      ),
+      'POST ($operation)',
+      uri,
+    );
 
-    debugLog('[$operation] HTTP Status: ${response.statusCode}');
-    debugLog('[$operation] Response: ${response.body}');
+    debugLog('[$operation] Response Body: ${response.body}');
 
     if (response.statusCode != 200 &&
         response.statusCode != 302 &&
         response.statusCode != 201) {
-      throw ApiException(
-        '$operation failed: HTTP ${response.statusCode}',
-      );
+      throw ApiException('Server returned status: ${response.statusCode}');
     }
 
     // ── Parse the GAS JSON response ──
-    // GAS always returns JSON. If status == 'error', throw immediately.
-    // A redirect to doGet (array response) means POST was swallowed.
     Map<String, dynamic>? gasResponse;
     try {
       final decoded = jsonDecode(response.body);
@@ -171,10 +139,7 @@ class ApiService {
         gasResponse = decoded;
       } else if (decoded is List) {
         // POST was redirected to GET — Apps Script not deployed correctly
-        throw ApiException(
-          '$operation: POST was redirected to GET. '
-          'The deployed Apps Script may be outdated.',
-        );
+        throw ApiException('Server returned an invalid format (List instead of Map). Is it a GET redirect?');
       }
     } catch (e) {
       if (e is ApiException) rethrow;
@@ -197,6 +162,54 @@ class ApiService {
         debugLog('[$operation] Affected row: ${gasResponse['row']}');
       }
     }
+  }
+
+  Future<http.Response> _requestWithRetry(
+    Future<http.Response> Function() requestFunc,
+    String operation,
+    Uri uri,
+  ) async {
+    const int maxRetries = 2; // 1 initial + 1 retry
+    int attempt = 0;
+    
+    while (attempt < maxRetries) {
+      attempt++;
+      try {
+        debugLog('--- HTTP REQUEST START ---');
+        debugLog('[$operation] Attempt $attempt');
+        debugLog('Connectivity status: Attempting network request...');
+        debugLog('Request URL: $uri');
+        debugLog('HTTP method: ${operation.split(' ').first}');
+        
+        final response = await requestFunc().timeout(const Duration(seconds: 15));
+        
+        debugLog('Connectivity status: Success');
+        debugLog('Response Status: ${response.statusCode}');
+        debugLog('Response Body: ${response.body}');
+        debugLog('--- HTTP REQUEST END ---');
+        
+        return response;
+      } catch (e) {
+        debugLog('[$operation] Error on attempt $attempt: $e');
+        debugLog('--- HTTP REQUEST END (WITH ERROR) ---');
+        
+        if (attempt >= maxRetries) {
+          if (e is TimeoutException) {
+            throw ApiException('Request Timed Out: $e');
+          }
+          if (e is SocketException) {
+            throw ApiException('Network Error: $e');
+          }
+          if (e is ApiException) rethrow;
+          
+          throw ApiException('API Error: $e');
+        }
+      }
+      
+      // Small delay before retry if attempt < maxRetries
+      await Future.delayed(const Duration(seconds: 1));
+    }
+    throw ApiException('Request failed completely');
   }
 
   void dispose() => _client.close();

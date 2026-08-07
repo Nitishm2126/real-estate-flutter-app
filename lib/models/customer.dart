@@ -29,12 +29,8 @@ extension RegistrationStatusX on RegistrationStatus {
 
 /// Core data model representing a single customer/lead record.
 ///
-/// The Google Sheet has NO ID column. The [id] field is a LOCAL-ONLY
-/// deterministic identifier generated from the customer's data fields.
-/// Same data → same ID, so the ID is stable across syncs.
-///
-/// GAS identifies rows by field matching (name + phone + place + lead + date).
-/// Flutter identifies records by this local [id] for list keys and Hero tags.
+/// The Google Sheet has an ID column.
+/// Flutter identifies records by this backend [id] for CRUD, list keys, and Hero tags.
 class Customer {
   final String? id;
   final String customerName;
@@ -79,23 +75,6 @@ class Customer {
         '${date!.day.toString().padLeft(2, '0')}';
   }
 
-  /// Generate a deterministic local ID from the customer's identifying fields.
-  /// Same data = same ID, so the ID is stable across syncs.
-  /// This is the ONLY stable identifier since GAS has no ID column.
-  static String generateLocalId(
-    String name,
-    String phone,
-    String place,
-    String lead,
-    String dateStr,
-  ) {
-    final key = '${name.trim().toLowerCase()}|'
-        '${phone.trim().toLowerCase()}|'
-        '${place.trim().toLowerCase()}|'
-        '${lead.trim().toLowerCase()}|'
-        '${dateStr.trim().toLowerCase()}';
-    return 'local_${key.hashCode.toUnsigned(32)}';
-  }
 
   Customer copyWith({
     String? id,
@@ -158,11 +137,6 @@ class Customer {
   }
 
   // ── Google Sheet JSON mapping ─────────────────────────────────
-  //
-  // Sheet columns (A–I, NO ID column):
-  // A: Customer Name | B: Phone Number | C: Place | D: Lead Given by |
-  // E: Site Visited  | F: Date         | G: Notes | H: Booking Status |
-  // I: Registration Status
 
   /// JSON for sending to Google Apps Script (create / update).
   Map<String, dynamic> toSheetJson() {
@@ -203,17 +177,11 @@ class Customer {
     final phone = json['Phone Number']?.toString().trim() ?? '';
     final place = json['Place']?.toString().trim() ?? '';
     final lead = json['Lead Given by']?.toString().trim() ?? '';
-    final dateStr = parsedDate != null
-        ? '${parsedDate.year}-'
-            '${parsedDate.month.toString().padLeft(2, '0')}-'
-            '${parsedDate.day.toString().padLeft(2, '0')}'
-        : '';
 
-    // Generate a deterministic local ID from the fields
-    final localId = generateLocalId(name, phone, place, lead, dateStr);
+    final backendId = json['ID']?.toString().trim();
 
     return Customer(
-      id: localId,
+      id: backendId,
       customerName: name,
       phoneNumber: phone,
       place: place,
@@ -227,4 +195,14 @@ class Customer {
           json['Registration Status']?.toString() ?? ''),
     );
   }
+
+  // ── Equality ──────────────────────────────────────────────────
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Customer && other.id == id && id != null;
+  }
+
+  @override
+  int get hashCode => id?.hashCode ?? super.hashCode;
 }
