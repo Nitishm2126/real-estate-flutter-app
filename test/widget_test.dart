@@ -10,7 +10,8 @@ import 'package:mcp_avadi/main.dart';
 import 'package:mcp_avadi/services/customer_service.dart';
 
 void main() {
-  testWidgets('App starts and renders DashboardScreen', (WidgetTester tester) async {
+  testWidgets('App starts and renders DashboardScreen',
+      (WidgetTester tester) async {
     // Build the root widget with the required ChangeNotifierProvider.
     await tester.pumpWidget(
       ChangeNotifierProvider(

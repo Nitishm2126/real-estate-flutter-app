@@ -99,7 +99,7 @@ class EmptyState extends StatelessWidget {
               Column(
                 children: [
                   const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.gold, size: 32)
+                          color: AppColors.gold, size: 32)
                       .animate(onPlay: (c) => c.repeat())
                       .moveY(
                           begin: -6,

@@ -5,15 +5,20 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/customer.dart';
+import '../models/follow_up.dart';
 import '../services/customer_service.dart';
 import '../utils/theme.dart';
 
 /// Premium bottom sheet for adding / editing a customer.
 /// Passing [existingCustomer] switches to edit mode.
 class AddCustomerBottomSheet extends StatefulWidget {
-  const AddCustomerBottomSheet({super.key, this.existingCustomer});
+  const AddCustomerBottomSheet(
+      {super.key,
+      this.existingCustomer,
+      this.isSchedulingNextFollowUp = false});
 
   final Customer? existingCustomer;
+  final bool isSchedulingNextFollowUp;
 
   @override
   State<AddCustomerBottomSheet> createState() => _AddCustomerBottomSheetState();
@@ -32,6 +37,11 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
   late DateTime _selectedDate;
   late BookingStatus _bookingStatus;
   late RegistrationStatus _registrationStatus;
+
+  late final TextEditingController _followUpNotesCtrl;
+  DateTime? _followUpDate;
+  TimeOfDay? _followUpTime;
+
   bool _isSaving = false;
 
   bool get _isEditing => widget.existingCustomer != null;
@@ -49,6 +59,24 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
     _selectedDate = c?.date ?? DateTime.now();
     _bookingStatus = c?.bookingStatus ?? BookingStatus.pending;
     _registrationStatus = c?.registrationStatus ?? RegistrationStatus.pending;
+
+    _followUpNotesCtrl = TextEditingController(text: c?.followUpNotes ?? '');
+    _followUpDate = c?.followUpDate;
+
+    if (widget.isSchedulingNextFollowUp) {
+      _followUpNotesCtrl.clear();
+      _followUpDate = null;
+      _followUpTime = null;
+    } else {
+      if (c?.followUpTime != null && c!.followUpTime!.isNotEmpty) {
+        try {
+          final parsed = DateFormat.jm().parse(c.followUpTime!);
+          _followUpTime = TimeOfDay.fromDateTime(parsed);
+        } catch (e) {
+          _followUpTime = null;
+        }
+      }
+    }
   }
 
   @override
@@ -59,6 +87,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
     _leadByCtrl.dispose();
     _siteCtrl.dispose();
     _notesCtrl.dispose();
+    _followUpNotesCtrl.dispose();
     super.dispose();
   }
 
@@ -82,6 +111,44 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
+  Future<void> _pickFollowUpDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _followUpDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime(2100),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.primary,
+                onPrimary: Colors.white,
+                secondary: AppColors.gold,
+              ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _followUpDate = picked);
+  }
+
+  Future<void> _pickFollowUpTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _followUpTime ?? TimeOfDay.now(),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+                primary: AppColors.primary,
+                onPrimary: Colors.white,
+                secondary: AppColors.gold,
+              ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _followUpTime = picked);
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -89,6 +156,17 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
     final service = context.read<CustomerService>();
 
     try {
+      String? formattedTime;
+      if (_followUpTime != null) {
+        final now = DateTime.now();
+        final dt = DateTime(now.year, now.month, now.day, _followUpTime!.hour,
+            _followUpTime!.minute);
+        formattedTime = DateFormat.jm().format(dt);
+      }
+
+      final bool wasCompleted =
+          widget.existingCustomer?.followUpCompleted ?? false;
+
       final customer = Customer(
         id: widget.existingCustomer?.id,
         customerName: _nameCtrl.text.trim(),
@@ -100,12 +178,48 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
         notes: _notesCtrl.text.trim(),
         bookingStatus: _bookingStatus,
         registrationStatus: _registrationStatus,
+        followUpDate: _followUpDate,
+        followUpTime: formattedTime,
+        followUpNotes: _followUpNotesCtrl.text.trim(),
+        followUpCompleted:
+            widget.isSchedulingNextFollowUp ? false : wasCompleted,
+        followUpCompletedAt: widget.isSchedulingNextFollowUp
+            ? null
+            : widget.existingCustomer?.followUpCompletedAt,
+        followUpHistory: widget.existingCustomer?.followUpHistory ?? [],
+        createdAt: widget.existingCustomer?.createdAt,
+        updatedAt: widget.existingCustomer?.updatedAt,
       );
 
       if (_isEditing) {
         await service.updateCustomer(customer);
+
+        if (_followUpDate != null &&
+            (widget.isSchedulingNextFollowUp ||
+                widget.existingCustomer?.followUpDate == null)) {
+          final historyCount =
+              widget.existingCustomer?.followUpHistory.length ?? 0;
+          final newFollowUp = FollowUp(
+            customerId: customer.id!,
+            followUpNumber: historyCount + 1,
+            followUpDate: _followUpDate!,
+            followUpTime: formattedTime,
+            notes: _followUpNotesCtrl.text.trim(),
+          );
+          await service.addFollowUpHistory(customer.id!, newFollowUp);
+        }
       } else {
-        await service.addCustomer(customer);
+        final newCustomer = await service.addCustomer(customer);
+        if (_followUpDate != null && newCustomer?.id != null) {
+          final newFollowUp = FollowUp(
+            customerId: newCustomer!.id!,
+            followUpNumber: 1,
+            followUpDate: _followUpDate!,
+            followUpTime: formattedTime,
+            notes: _followUpNotesCtrl.text.trim(),
+          );
+          await service.addFollowUpHistory(newCustomer.id!, newFollowUp);
+        }
       }
 
       if (mounted) {
@@ -136,12 +250,13 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Icons.wifi_off_rounded,
-                    color: Colors.white, size: 18),
-                SizedBox(width: 10),
-                Expanded(child: Text('Unable to connect to API.')),
+                const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(e.toString().contains('PostgrestException') 
+                    ? 'Database Error. Please check connection and try again.' 
+                    : 'Unable to connect to database.')),
               ],
             ),
             backgroundColor: AppColors.statusRed,
@@ -158,6 +273,306 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final isDesktop = MediaQuery.of(context).size.width >= 768;
+
+    Widget formContent(ScrollController? scrollController) {
+      return Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: isDesktop
+              ? BorderRadius.circular(AppRadius.lg)
+              : const BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
+        ),
+        child: Column(
+          children: [
+            // Drag handle (only on mobile bottom sheet)
+            if (!isDesktop) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                ),
+              ),
+            ],
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md, AppSpacing.md, AppSpacing.sm, 0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(
+                      _isEditing
+                          ? Icons.edit_rounded
+                          : Icons.person_add_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isEditing ? 'Edit Customer' : 'Add Customer',
+                          style: GoogleFonts.poppins(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        Text(
+                          _isEditing
+                              ? 'Update customer information'
+                              : 'Add a new customer lead',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(AppRadius.xs),
+                      ),
+                      child: const Icon(Icons.close_rounded,
+                          color: AppColors.textSecondary, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 4),
+            const Divider(),
+
+            // Form
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md,
+                      AppSpacing.sm, AppSpacing.md, AppSpacing.xxl),
+                  children: [
+                    _sectionLabel('Personal Details'),
+                    const SizedBox(height: AppSpacing.sm),
+                    _field(
+                      controller: _nameCtrl,
+                      label: 'Customer Name',
+                      icon: Icons.person_rounded,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Customer name is required'
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _field(
+                      controller: _phoneCtrl,
+                      label: 'Phone Number',
+                      icon: Icons.phone_rounded,
+                      keyboardType: TextInputType.phone,
+                      validator: (v) {
+                        final val = v?.trim() ?? '';
+                        if (val.isEmpty) return 'Phone number is required';
+                        if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(val)) {
+                          return 'Enter a valid phone number';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _field(
+                      controller: _placeCtrl,
+                      label: 'Place',
+                      icon: Icons.place_rounded,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Place is required'
+                          : null,
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+                    _sectionLabel('Lead Details'),
+                    const SizedBox(height: AppSpacing.sm),
+
+                    _field(
+                      controller: _leadByCtrl,
+                      label: 'Lead Given By',
+                      icon: Icons.person_pin_circle_rounded,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Lead source is required'
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _field(
+                      controller: _siteCtrl,
+                      label: 'Site Visited',
+                      icon: Icons.villa_rounded,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Site is required'
+                          : null,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _dateField(),
+
+                    const SizedBox(height: AppSpacing.md),
+                    _sectionLabel('Status'),
+                    const SizedBox(height: AppSpacing.sm),
+
+                    _dropdownField<BookingStatus>(
+                      label: 'Booking Status',
+                      icon: Icons.bookmark_rounded,
+                      value: _bookingStatus,
+                      items: BookingStatus.values,
+                      labelBuilder: (v) => v.label,
+                      onChanged: (v) => setState(() => _bookingStatus = v!),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _dropdownField<RegistrationStatus>(
+                      label: 'Registration Status',
+                      icon: Icons.verified_rounded,
+                      value: _registrationStatus,
+                      items: RegistrationStatus.values,
+                      labelBuilder: (v) => v.label,
+                      onChanged: (v) =>
+                          setState(() => _registrationStatus = v!),
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+                    _sectionLabel('Notes'),
+                    const SizedBox(height: AppSpacing.sm),
+                    _field(
+                      controller: _notesCtrl,
+                      label: 'Notes (Optional)',
+                      icon: Icons.notes_rounded,
+                      maxLines: 3,
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _sectionLabel('Follow-up Details'),
+                        if (_followUpDate != null)
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _followUpDate = null;
+                                _followUpTime = null;
+                                _followUpNotesCtrl.clear();
+                              });
+                            },
+                            icon: const Icon(Icons.clear_all_rounded,
+                                size: 16),
+                            label: Text(
+                              'Clear',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.statusRed,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+
+                    Row(
+                      children: [
+                        Expanded(child: _followUpDateField()),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(child: _followUpTimeField()),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _field(
+                      controller: _followUpNotesCtrl,
+                      label: 'Follow-up Notes (Optional)',
+                      icon: Icons.note_alt_rounded,
+                      maxLines: 2,
+                    ),
+
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Action buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _isSaving
+                                ? null
+                                : () => Navigator.pop(context),
+                            child: Text('Cancel',
+                                style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: _isSaving ? null : _save,
+                            child: _isSaving
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: AppColors.primary,
+                                    ),
+                                  )
+                                : Text(
+                                    _isEditing
+                                        ? 'Update Customer'
+                                        : 'Save Customer',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (isDesktop) {
+      return Material(
+        color: Colors.transparent,
+        child: formContent(null),
+      );
+    }
 
     return AnimatedPadding(
       duration: const Duration(milliseconds: 150),
@@ -168,252 +583,18 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
         maxChildSize: 0.97,
         expand: false,
         builder: (context, scrollController) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(AppRadius.xxl)),
-            ),
-            child: Column(
-              children: [
-                // Drag handle
-                const SizedBox(height: 12),
-                Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: AppColors.divider,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                ),
-
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md, AppSpacing.md, AppSpacing.sm, 0),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Icon(
-                          _isEditing
-                              ? Icons.edit_rounded
-                              : Icons.person_add_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isEditing ? 'Edit Customer' : 'Add Customer',
-                              style: GoogleFonts.poppins(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            Text(
-                              _isEditing
-                                  ? 'Update customer information'
-                                  : 'Add a new customer lead',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(AppRadius.xs),
-                          ),
-                          child: const Icon(Icons.close_rounded,
-                              color: AppColors.textSecondary, size: 18),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-                const Divider(),
-
-                // Form
-                Expanded(
-                  child: Form(
-                    key: _formKey,
-                    child: ListView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.md,
-                          AppSpacing.sm,
-                          AppSpacing.md,
-                          AppSpacing.xxl),
-                      children: [
-                        _sectionLabel('Personal Details'),
-                        const SizedBox(height: AppSpacing.sm),
-                        _field(
-                          controller: _nameCtrl,
-                          label: 'Customer Name',
-                          icon: Icons.person_rounded,
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Customer name is required'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        _field(
-                          controller: _phoneCtrl,
-                          label: 'Phone Number',
-                          icon: Icons.phone_rounded,
-                          keyboardType: TextInputType.phone,
-                          validator: (v) {
-                            final val = v?.trim() ?? '';
-                            if (val.isEmpty) return 'Phone number is required';
-                            if (!RegExp(r'^\+?[0-9]{7,15}$').hasMatch(val)) {
-                              return 'Enter a valid phone number';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        _field(
-                          controller: _placeCtrl,
-                          label: 'Place',
-                          icon: Icons.place_rounded,
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Place is required'
-                              : null,
-                        ),
-
-                        const SizedBox(height: AppSpacing.md),
-                        _sectionLabel('Lead Details'),
-                        const SizedBox(height: AppSpacing.sm),
-
-                        _field(
-                          controller: _leadByCtrl,
-                          label: 'Lead Given By',
-                          icon: Icons.person_pin_circle_rounded,
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Lead source is required'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        _field(
-                          controller: _siteCtrl,
-                          label: 'Site Visited',
-                          icon: Icons.villa_rounded,
-                          validator: (v) => (v == null || v.trim().isEmpty)
-                              ? 'Site is required'
-                              : null,
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        _dateField(),
-
-                        const SizedBox(height: AppSpacing.md),
-                        _sectionLabel('Status'),
-                        const SizedBox(height: AppSpacing.sm),
-
-                        _dropdownField<BookingStatus>(
-                          label: 'Booking Status',
-                          icon: Icons.bookmark_rounded,
-                          value: _bookingStatus,
-                          items: BookingStatus.values,
-                          labelBuilder: (v) => v.label,
-                          onChanged: (v) =>
-                              setState(() => _bookingStatus = v!),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        _dropdownField<RegistrationStatus>(
-                          label: 'Registration Status',
-                          icon: Icons.verified_rounded,
-                          value: _registrationStatus,
-                          items: RegistrationStatus.values,
-                          labelBuilder: (v) => v.label,
-                          onChanged: (v) =>
-                              setState(() => _registrationStatus = v!),
-                        ),
-
-                        const SizedBox(height: AppSpacing.md),
-                        _sectionLabel('Notes'),
-                        const SizedBox(height: AppSpacing.sm),
-                        _field(
-                          controller: _notesCtrl,
-                          label: 'Notes (Optional)',
-                          icon: Icons.notes_rounded,
-                          maxLines: 3,
-                        ),
-
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Action buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed:
-                                    _isSaving ? null : () => Navigator.pop(context),
-                                child: Text('Cancel',
-                                    style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w600)),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
-                            Expanded(
-                              flex: 2,
-                              child: ElevatedButton(
-                                onPressed: _isSaving ? null : _save,
-                                child: _isSaving
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.5,
-                                          color: AppColors.primary,
-                                        ),
-                                      )
-                                    : Text(
-                                        _isEditing
-                                            ? 'Update Customer'
-                                            : 'Save Customer',
-                                        style: GoogleFonts.poppins(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+          return formContent(scrollController);
         },
       ),
-    ).animate().slideY(
+    )
+        .animate()
+        .slideY(
           begin: 0.15,
           end: 0,
           duration: 350.ms,
           curve: Curves.easeOutCubic,
-        ).fadeIn();
+        )
+        .fadeIn();
   }
 
   Widget _sectionLabel(String label) {
@@ -484,6 +665,82 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
               fontSize: 14,
               fontWeight: FontWeight.w500,
               color: AppColors.textPrimary),
+        ),
+      ),
+    );
+  }
+
+  Widget _followUpDateField() {
+    return InkWell(
+      onTap: _pickFollowUpDate,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Date (Optional)',
+          prefixIcon: const Padding(
+            padding: EdgeInsets.all(12),
+            child: Icon(Icons.event_available_rounded,
+                color: AppColors.primary, size: 20),
+          ),
+          filled: true,
+          fillColor: AppColors.surfaceVariant,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderSide: const BorderSide(color: AppColors.divider),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderSide: const BorderSide(color: AppColors.divider),
+          ),
+        ),
+        child: Text(
+          _followUpDate != null
+              ? DateFormat('dd MMM yyyy').format(_followUpDate!)
+              : 'Select Date',
+          style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: _followUpDate != null
+                  ? AppColors.textPrimary
+                  : AppColors.textMuted),
+        ),
+      ),
+    );
+  }
+
+  Widget _followUpTimeField() {
+    return InkWell(
+      onTap: _pickFollowUpTime,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Time (Optional)',
+          prefixIcon: const Padding(
+            padding: EdgeInsets.all(12),
+            child: Icon(Icons.access_time_rounded,
+                color: AppColors.primary, size: 20),
+          ),
+          filled: true,
+          fillColor: AppColors.surfaceVariant,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderSide: const BorderSide(color: AppColors.divider),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderSide: const BorderSide(color: AppColors.divider),
+          ),
+        ),
+        child: Text(
+          _followUpTime != null
+              ? _followUpTime!.format(context)
+              : 'Select Time',
+          style: GoogleFonts.poppins(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: _followUpTime != null
+                  ? AppColors.textPrimary
+                  : AppColors.textMuted),
         ),
       ),
     );

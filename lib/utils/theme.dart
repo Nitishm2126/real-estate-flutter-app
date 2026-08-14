@@ -8,41 +8,51 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   AppColors._();
 
-  // Brand
-  static const Color primary = Color(0xFF0E4B3C);
-  static const Color primaryLight = Color(0xFF176354);
-  static const Color primaryDark = Color(0xFF083328);
-  static const Color gold = Color(0xFFD4AF37);
-  static const Color goldLight = Color(0xFFE8C95A);
-  static const Color goldDark = Color(0xFFB8960F);
+  // Brand Colors matching the reference UI
+  static const Color primary = Color(0xFF0F4C3A); // Deep Forest Green
+  static const Color primaryLight = Color(0xFF18664F);
+  static const Color primaryDark = Color(0xFF093125);
+  static const Color gold = Color(0xFFDCA74D); // Warm Champagne / Gold
+  static const Color goldLight = Color(0xFFEBC173);
+  static const Color goldDark = Color(0xFFB58739);
 
   // Surfaces
-  static const Color background = Color(0xFFF5F7FA);
+  static const Color background = Color(0xFFF9FAFB); // Very light warm neutral
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF0F4F8);
+  static const Color surfaceVariant = Color(0xFFF3F4F6);
 
   // Text
-  static const Color textPrimary = Color(0xFF1A2332);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color textMuted = Color(0xFF94A3B8);
+  static const Color textPrimary = Color(0xFF111827); // Deep charcoal
+  static const Color textSecondary = Color(0xFF6B7280); // Muted slate
+  static const Color textMuted = Color(0xFF9CA3AF);
   static const Color textOnDark = Color(0xFFFFFFFF);
-  static const Color textOnDarkMuted = Color(0xFFB0C4BB);
+  static const Color textOnDarkMuted = Color(0xFFD1D5DB);
 
-  // Status
-  static const Color statusBooked = Color(0xFF16A34A);
-  static const Color statusBookedBg = Color(0xFFDCFCE7);
-  static const Color statusPending = Color(0xFFF59E0B);
-  static const Color statusPendingBg = Color(0xFFFEF3C7);
-  static const Color statusCompleted = Color(0xFF2563EB);
-  static const Color statusCompletedBg = Color(0xFFDBEAFE);
-  static const Color statusRed = Color(0xFFDC2626);
-  static const Color statusRedBg = Color(0xFFFEE2E2);
+  // Semantic Pill Colors (from reference)
+  static const Color statusBooked = Color(0xFF10B981); // Emerald Green
+  static const Color statusBookedBg = Color(0xFFECFDF5);
+  
+  static const Color statusPending = Color(0xFFF59E0B); // Warm Orange
+  static const Color statusPendingBg = Color(0xFFFFFBEB);
+  
+  static const Color statusUpcoming = Color(0xFF3B82F6); // Clean Blue
+  static const Color statusUpcomingBg = Color(0xFFEFF6FF);
+  
+  static const Color statusCompleted = Color(0xFF10B981); // Emerald Green
+  static const Color statusCompletedBg = Color(0xFFECFDF5);
+
+  
+  static const Color statusRed = Color(0xFFEF4444); // Professional Red
+  static const Color statusRedBg = Color(0xFFFEF2F2);
+  
+  static const Color statusPurple = Color(0xFF8B5CF6); // Elegant Purple
+  static const Color statusPurpleBg = Color(0xFFF5F3FF);
 
   // Utility
-  static const Color divider = Color(0xFFE2E8F0);
-  static const Color shimmerBase = Color(0xFFE2E8F0);
-  static const Color shimmerHighlight = Color(0xFFF8FAFC);
-  static const Color overlay = Color(0x80000000);
+  static const Color divider = Color(0xFFE5E7EB); // Subtle neutral border
+  static const Color shimmerBase = Color(0xFFE5E7EB);
+  static const Color shimmerHighlight = Color(0xFFF9FAFB);
+  static const Color overlay = Color(0x66000000);
 }
 
 class AppRadius {
@@ -51,9 +61,9 @@ class AppRadius {
   static const double xs = 8;
   static const double sm = 12;
   static const double md = 16;
-  static const double lg = 20;   // Primary card radius as per spec
-  static const double xl = 28;
-  static const double xxl = 36;
+  static const double lg = 20; // Exact rounded corners from reference
+  static const double xl = 24;
+  static const double xxl = 32;
   static const double full = 100;
 }
 
@@ -71,55 +81,46 @@ class AppSpacing {
 class AppShadows {
   AppShadows._();
 
+  // Very subtle, premium shadows as requested
   static List<BoxShadow> card = [
     BoxShadow(
-      color: const Color(0xFF0E4B3C).withValues(alpha: 0.06),
-      blurRadius: 24,
+      color: Colors.black.withValues(alpha: 0.03),
+      blurRadius: 20,
       spreadRadius: 0,
       offset: const Offset(0, 8),
-    ),
-    BoxShadow(
-      color: Colors.black.withValues(alpha: 0.03),
-      blurRadius: 4,
-      offset: const Offset(0, 2),
     ),
   ];
 
   static List<BoxShadow> soft = [
     BoxShadow(
-      color: Colors.black.withValues(alpha: 0.06),
-      blurRadius: 16,
+      color: Colors.black.withValues(alpha: 0.02),
+      blurRadius: 10,
       offset: const Offset(0, 4),
     ),
   ];
 
   static List<BoxShadow> gold = [
     BoxShadow(
-      color: AppColors.gold.withValues(alpha: 0.40),
-      blurRadius: 24,
+      color: AppColors.gold.withValues(alpha: 0.30),
+      blurRadius: 20,
       spreadRadius: 0,
-      offset: const Offset(0, 10),
-    ),
-    BoxShadow(
-      color: AppColors.gold.withValues(alpha: 0.20),
-      blurRadius: 8,
-      offset: const Offset(0, 4),
+      offset: const Offset(0, 8),
     ),
   ];
 
   static List<BoxShadow> header = [
     BoxShadow(
-      color: AppColors.primary.withValues(alpha: 0.25),
-      blurRadius: 32,
-      offset: const Offset(0, 16),
+      color: AppColors.primary.withValues(alpha: 0.20),
+      blurRadius: 30,
+      offset: const Offset(0, 10),
     ),
   ];
 
   static List<BoxShadow> fab = [
     BoxShadow(
-      color: AppColors.gold.withValues(alpha: 0.50),
-      blurRadius: 20,
-      offset: const Offset(0, 8),
+      color: AppColors.gold.withValues(alpha: 0.35),
+      blurRadius: 16,
+      offset: const Offset(0, 6),
     ),
   ];
 }
@@ -141,6 +142,7 @@ class AppTheme {
       ),
     );
 
+    // Using Poppins with tight letter spacing to mimic modern geometric sans-serifs
     final textTheme = GoogleFonts.poppinsTextTheme(base.textTheme).apply(
       bodyColor: AppColors.textPrimary,
       displayColor: AppColors.textPrimary,
@@ -156,8 +158,8 @@ class AppTheme {
         titleTextStyle: GoogleFonts.poppins(
           color: AppColors.textOnDark,
           fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.5,
         ),
       ),
       cardTheme: CardThemeData(
@@ -185,15 +187,15 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: const BorderSide(color: AppColors.gold, width: 2),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: const BorderSide(color: AppColors.statusRed, width: 1.2),
+          borderSide: const BorderSide(color: AppColors.statusRed, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: const BorderSide(color: AppColors.statusRed, width: 2),
+          borderSide: const BorderSide(color: AppColors.statusRed, width: 1.5),
         ),
         labelStyle: GoogleFonts.poppins(
           color: AppColors.textSecondary,
@@ -208,11 +210,11 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.gold,
-          foregroundColor: AppColors.primary,
+          foregroundColor: AppColors.surface,
           textStyle: GoogleFonts.poppins(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
             fontSize: 15,
-            letterSpacing: 0.3,
+            letterSpacing: 0.2,
           ),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(
@@ -229,7 +231,7 @@ class AppTheme {
             fontSize: 15,
           ),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          side: const BorderSide(color: AppColors.divider, width: 1.5),
+          side: const BorderSide(color: AppColors.divider, width: 1),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
@@ -237,7 +239,7 @@ class AppTheme {
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppColors.gold,
-        foregroundColor: AppColors.primary,
+        foregroundColor: AppColors.surface,
       ),
       dividerTheme: const DividerThemeData(
         color: AppColors.divider,

@@ -14,11 +14,13 @@ class AppConstants {
 
   // Dropdown option sets
   static const List<String> bookingStatusOptions = ['Pending', 'Booked'];
-  static const List<String> registrationStatusOptions = ['Pending', 'Completed'];
+  static const List<String> registrationStatusOptions = [
+    'Pending',
+    'Completed'
+  ];
 
-  // Live Apps Script endpoint backing this CRM's Google Sheet.
-  static const String appsScriptApiUrl = 'https://script.google.com/macros/s/AKfycby5IZR7qP9uXhO8M47AWOGH6Wez9gV1gY32SDHWsUsTr4mgcQGXaqAgP6v0B_VMgpDA7Q/exec';
-
-  // Auto-sync interval: 5 seconds as required.
-  static const Duration apiSyncInterval = Duration(seconds: 5);
+  // Supabase Configuration
+  static const String supabaseUrl = 'https://pwiedgucmiuvcejhlpuu.supabase.co';
+  static const String supabaseAnonKey =
+      'sb_publishable_ZS2zU00RQDQwD14xGLmpVQ_AfJpoJnN';
 }

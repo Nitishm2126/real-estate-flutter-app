@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/customer.dart';
 import '../screens/customer_details_screen.dart';
-import '../services/api_service.dart';
 import '../services/customer_service.dart';
 import '../utils/theme.dart';
 import 'add_customer_bottom_sheet.dart';
@@ -36,7 +35,8 @@ class CustomerCard extends StatelessWidget {
   }
 
   Future<void> _whatsApp(BuildContext context) async {
-    String phone = customer.dialablePhoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    String phone =
+        customer.dialablePhoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
     if (phone.length == 10) phone = '91$phone';
 
     final String message = 'Hello ${customer.customerName},\n'
@@ -47,17 +47,21 @@ class CustomerCard extends StatelessWidget {
         'GM Sales - MCP Avadi';
     final String encodedMessage = Uri.encodeComponent(message);
 
-    final Uri businessUri = Uri.parse('intent://send?phone=$phone&text=$encodedMessage#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end');
-    final Uri normalUri = Uri.parse('https://wa.me/$phone?text=$encodedMessage');
+    final Uri businessUri = Uri.parse(
+        'intent://send?phone=$phone&text=$encodedMessage#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end');
+    final Uri normalUri =
+        Uri.parse('https://wa.me/$phone?text=$encodedMessage');
 
     bool launched = false;
     try {
-      launched = await launchUrl(businessUri, mode: LaunchMode.externalApplication);
+      launched =
+          await launchUrl(businessUri, mode: LaunchMode.externalApplication);
     } catch (_) {}
 
     if (!launched) {
       try {
-        launched = await launchUrl(normalUri, mode: LaunchMode.externalApplication);
+        launched =
+            await launchUrl(normalUri, mode: LaunchMode.externalApplication);
       } catch (_) {}
     }
 
@@ -93,8 +97,8 @@ class CustomerCard extends StatelessWidget {
         ),
         content: Text(
           'This will permanently remove ${customer.customerName} from the CRM.',
-          style: GoogleFonts.poppins(
-              color: AppColors.textSecondary, fontSize: 14),
+          style:
+              GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14),
         ),
         actions: [
           TextButton(
@@ -111,8 +115,8 @@ class CustomerCard extends StatelessWidget {
               elevation: 0,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child:
-                Text('Delete', style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+            child: Text('Delete',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -189,7 +193,7 @@ class CustomerCard extends StatelessWidget {
             if (context.mounted) onDeleted?.call();
           } catch (e) {
             if (context.mounted) {
-              final errorMsg = e is ApiException ? e.message : e.toString();
+              final errorMsg = e.toString();
               _snack(context, 'Failed to delete: $errorMsg');
             }
           }
@@ -205,6 +209,52 @@ class CustomerCard extends StatelessWidget {
       return parts[0].isNotEmpty ? parts[0][0].toUpperCase() : '?';
     }
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  Widget _buildFollowUpInfo() {
+    if (customer.followUpCompleted) {
+      return const _InfoLine(
+        icon: Icons.check_circle_rounded,
+        text: 'Follow-up Completed',
+        color: AppColors.statusBooked,
+      );
+    }
+
+    if (customer.followUpDate == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final followUp = customer.followUpDate!.toLocal();
+    final followUpStart = DateTime(followUp.year, followUp.month, followUp.day);
+
+    if (followUpStart.isBefore(todayStart)) {
+      final days = todayStart.difference(followUpStart).inDays;
+      return _InfoLine(
+        icon: Icons.warning_rounded,
+        text: 'Overdue • $days day${days == 1 ? '' : 's'}',
+        color: AppColors.statusRed,
+      );
+    } else if (followUpStart.isAtSameMomentAs(todayStart)) {
+      final timeStr =
+          customer.followUpTime != null && customer.followUpTime!.isNotEmpty
+              ? ' at ${customer.followUpTime}'
+              : '';
+      return _InfoLine(
+        icon: Icons.notifications_active_rounded,
+        text: 'Follow-up Today$timeStr',
+        color: AppColors.goldDark,
+      );
+    } else {
+      final timeStr =
+          customer.followUpTime != null && customer.followUpTime!.isNotEmpty
+              ? ' • ${customer.followUpTime}'
+              : '';
+      return _InfoLine(
+        icon: Icons.event_available_rounded,
+        text: 'Upcoming: ${customer.formattedFollowUpDate}$timeStr',
+        color: AppColors.primary,
+      );
+    }
   }
 
   @override
@@ -236,7 +286,7 @@ class CustomerCard extends StatelessWidget {
         // Swipe-to-delete: confirm first, then perform the delete
         final confirmed = await _confirmDelete(context);
         if (!confirmed) return false;
-        
+
         if (!context.mounted) return false;
 
         try {
@@ -245,7 +295,7 @@ class CustomerCard extends StatelessWidget {
           return true; // Successfully deleted, allow dismiss animation to complete
         } catch (e) {
           if (context.mounted) {
-            final errorMsg = e is ApiException ? e.message : e.toString();
+            final errorMsg = e.toString();
             _snack(context, 'Failed to delete: $errorMsg');
           }
           return false; // Don't dismiss on failure — customer was restored
@@ -364,14 +414,15 @@ class CustomerCard extends StatelessWidget {
                           text: customer.phoneNumber,
                           color: AppColors.statusBooked),
                       _InfoLine(
-                          icon: Icons.place_rounded,
-                          text: customer.place),
+                          icon: Icons.place_rounded, text: customer.place),
                       _InfoLine(
                           icon: Icons.person_pin_circle_rounded,
                           text: 'Lead: ${customer.leadGivenBy}'),
                       _InfoLine(
                           icon: Icons.villa_rounded,
                           text: 'Site: ${customer.siteVisited}'),
+
+                      _buildFollowUpInfo(),
 
                       const SizedBox(height: AppSpacing.sm),
 

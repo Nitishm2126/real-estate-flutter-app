@@ -21,34 +21,38 @@ class PdfReportScreen extends StatelessWidget {
     required this.totalCustomers,
     required this.bookedCustomers,
     required this.registrationCompleted,
+    this.isInline = false,
   });
 
   final List<Customer> customers;
   final int totalCustomers;
   final int bookedCustomers;
   final int registrationCompleted;
+  final bool isInline;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Customer Report',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontSize: 18,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      appBar: isInline
+          ? null
+          : AppBar(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              title: Text(
+                'Customer Report',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  fontSize: 18,
+                ),
+              ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
       body: PdfPreview(
         // ── PDF generation ──────────────────────────────────────
         build: (pageFormat) async {
@@ -62,7 +66,8 @@ class PdfReportScreen extends StatelessWidget {
         canDebug: false,
         allowPrinting: true,
         allowSharing: true,
-        pdfFileName: 'MCP_Avadi_Report_${DateFormat('dd-MM-yyyy').format(DateTime.now())}.pdf',
+        pdfFileName:
+            'MCP_Avadi_Report_${DateFormat('dd-MM-yyyy').format(DateTime.now())}.pdf',
 
         // ── Styling ─────────────────────────────────────────────
         previewPageMargin: const EdgeInsets.all(12),
@@ -84,7 +89,8 @@ class PdfReportScreen extends StatelessWidget {
       author: 'MCP Avadi CRM',
     );
 
-    final generatedAt = DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now());
+    final generatedAt =
+        DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.now());
 
     // Colour palette (PdfColor)
     const primaryColor = PdfColor.fromInt(0xFF0D5C40);
@@ -111,8 +117,14 @@ class PdfReportScreen extends StatelessWidget {
     ];
 
     final headers = [
-      '#', 'Customer Name', 'Phone', 'Place',
-      'Lead By', 'Date', 'Booking', 'Registration',
+      '#',
+      'Customer Name',
+      'Phone',
+      'Place',
+      'Lead By',
+      'Date',
+      'Booking',
+      'Registration',
     ];
 
     pdf.addPage(
@@ -127,7 +139,8 @@ class PdfReportScreen extends StatelessWidget {
           textDark,
           generatedAt,
         ),
-        footer: (ctx) => _buildFooter(ctx, primaryColor, textMuted, generatedAt),
+        footer: (ctx) =>
+            _buildFooter(ctx, primaryColor, textMuted, generatedAt),
         build: (ctx) => [
           // ── Summary cards ──────────────────────────────────────
           _buildSummaryRow(primaryColor, goldColor, textMuted),
@@ -187,7 +200,9 @@ class PdfReportScreen extends StatelessWidget {
                     _tagCell(
                       isCompleted ? 'Done' : 'Pending',
                       isCompleted ? completedBg : pendingBg,
-                      isCompleted ? const PdfColor.fromInt(0xFF155CB6) : goldColor,
+                      isCompleted
+                          ? const PdfColor.fromInt(0xFF155CB6)
+                          : goldColor,
                     ),
                   ],
                 );
@@ -293,13 +308,14 @@ class PdfReportScreen extends StatelessWidget {
       children: [
         _summaryCard('Total Customers', '$totalCustomers', primaryColor),
         pw.SizedBox(width: 8),
-        _summaryCard('Booked', '$bookedCustomers', const PdfColor.fromInt(0xFF15803D)),
+        _summaryCard(
+            'Booked', '$bookedCustomers', const PdfColor.fromInt(0xFF15803D)),
         pw.SizedBox(width: 8),
         _summaryCard('Reg. Completed', '$registrationCompleted',
             const PdfColor.fromInt(0xFF1E40AF)),
         pw.SizedBox(width: 8),
-        _summaryCard('Pending',
-            '${totalCustomers - bookedCustomers}', goldColor),
+        _summaryCard(
+            'Pending', '${totalCustomers - bookedCustomers}', goldColor),
       ],
     );
   }

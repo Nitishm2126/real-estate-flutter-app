@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'screens/dashboard_screen.dart';
+import 'screens/navigation_shell.dart';
 import 'services/customer_service.dart';
 import 'utils/constants.dart';
 import 'utils/theme.dart';
 
-void main() {
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: AppConstants.supabaseUrl,
+    publishableKey: AppConstants.supabaseAnonKey,
+  );
+
   runApp(const McpAvadiApp());
 }
 
@@ -22,7 +31,7 @@ class McpAvadiApp extends StatelessWidget {
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const DashboardScreen(),
+        home: const NavigationShell(),
       ),
     );
   }

@@ -26,8 +26,8 @@ dependencies:
   # Typography
   google_fonts: ^6.2.1
 
-  # Networking – Google Apps Script integration
-  http: ^1.2.1
+  # Networking – Supabase integration
+  supabase_flutter: ^2.5.4
 
   # Shimmer loading skeleton
   shimmer: ^3.0.0
