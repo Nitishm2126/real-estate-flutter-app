@@ -7,8 +7,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/customer.dart';
 import '../services/customer_service.dart';
+import '../services/whatsapp_service.dart';
 import '../utils/theme.dart';
 import '../widgets/add_customer_bottom_sheet.dart';
+import '../widgets/whatsapp_selection_sheet.dart';
 import '../widgets/follow_up_history_section.dart';
 
 /// Full-detail view for a single customer with Hero animation,
@@ -37,38 +39,45 @@ class CustomerDetailsScreen extends StatelessWidget {
     final service = Provider.of<CustomerService>(context, listen: false);
     final currentCustomer = service.customers
         .firstWhere((c) => c.id == customer.id, orElse: () => customer);
-    String phone =
-        currentCustomer.dialablePhoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    if (phone.length == 10) phone = '91$phone';
+    
+    final message = WhatsAppService.getPrefilledMessage(currentCustomer.customerName);
+    
+    final availableApp = await WhatsAppService.checkAvailableApps();
+    
+    if (!context.mounted) return;
 
-    final String message = 'Hello ${currentCustomer.customerName},\n'
-        'Thank you for your interest in MCP Avadi.\n'
-        'We are happy to assist you regarding your property enquiry.\n\n'
-        'Regards,\n'
-        'T. Meenakshi Sundaram\n'
-        'GM Sales - MCP Avadi';
-    final String encodedMessage = Uri.encodeComponent(message);
-
-    final Uri businessUri = Uri.parse(
-        'intent://send?phone=$phone&text=$encodedMessage#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end');
-    final Uri normalUri =
-        Uri.parse('https://wa.me/$phone?text=$encodedMessage');
-
-    bool launched = false;
-    try {
-      launched =
-          await launchUrl(businessUri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-
-    if (!launched) {
-      try {
-        launched =
-            await launchUrl(normalUri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
+    if (availableApp == WhatsAppApp.none) {
+      _showSnackBar(context, 'WhatsApp is not available on this device.', isError: true);
+      return;
     }
 
-    if (!launched && context.mounted) {
-      _showSnackBar(context, 'Could not open WhatsApp.', isError: true);
+    if (availableApp == WhatsAppApp.both) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (_) => WhatsAppSelectionSheet(
+          onSelect: (selectedApp) async {
+            final launched = await WhatsAppService.launchWhatsApp(
+              phone: currentCustomer.dialablePhoneNumber,
+              message: message,
+              app: selectedApp,
+            );
+            if (!launched && context.mounted) {
+              _showSnackBar(context, 'Could not open WhatsApp.', isError: true);
+            }
+          },
+        ),
+      );
+    } else {
+      final launched = await WhatsAppService.launchWhatsApp(
+        phone: currentCustomer.dialablePhoneNumber,
+        message: message,
+        app: availableApp,
+      );
+      if (!launched && context.mounted) {
+        _showSnackBar(context, 'Could not open WhatsApp.', isError: true);
+      }
     }
   }
 

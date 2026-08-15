@@ -8,7 +8,9 @@ import '../models/customer.dart';
 import '../screens/customer_details_screen.dart';
 import '../services/customer_service.dart';
 import '../utils/theme.dart';
+import '../services/whatsapp_service.dart';
 import 'add_customer_bottom_sheet.dart';
+import 'whatsapp_selection_sheet.dart';
 
 /// Premium customer card with swipe, long-press, and tap interactions.
 class CustomerCard extends StatelessWidget {
@@ -35,38 +37,44 @@ class CustomerCard extends StatelessWidget {
   }
 
   Future<void> _whatsApp(BuildContext context) async {
-    String phone =
-        customer.dialablePhoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    if (phone.length == 10) phone = '91$phone';
+    final message = WhatsAppService.getPrefilledMessage(customer.customerName);
+    
+    final availableApp = await WhatsAppService.checkAvailableApps();
+    
+    if (!context.mounted) return;
 
-    final String message = 'Hello ${customer.customerName},\n'
-        'Thank you for your interest in MCP Avadi.\n'
-        'We are happy to assist you regarding your property enquiry.\n\n'
-        'Regards,\n'
-        'T. Meenakshi Sundaram\n'
-        'GM Sales - MCP Avadi';
-    final String encodedMessage = Uri.encodeComponent(message);
-
-    final Uri businessUri = Uri.parse(
-        'intent://send?phone=$phone&text=$encodedMessage#Intent;package=com.whatsapp.w4b;scheme=whatsapp;end');
-    final Uri normalUri =
-        Uri.parse('https://wa.me/$phone?text=$encodedMessage');
-
-    bool launched = false;
-    try {
-      launched =
-          await launchUrl(businessUri, mode: LaunchMode.externalApplication);
-    } catch (_) {}
-
-    if (!launched) {
-      try {
-        launched =
-            await launchUrl(normalUri, mode: LaunchMode.externalApplication);
-      } catch (_) {}
+    if (availableApp == WhatsAppApp.none) {
+      _snack(context, 'WhatsApp is not available on this device.');
+      return;
     }
 
-    if (!launched && context.mounted) {
-      _snack(context, 'Could not open WhatsApp.');
+    if (availableApp == WhatsAppApp.both) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (_) => WhatsAppSelectionSheet(
+          onSelect: (selectedApp) async {
+            final launched = await WhatsAppService.launchWhatsApp(
+              phone: customer.dialablePhoneNumber,
+              message: message,
+              app: selectedApp,
+            );
+            if (!launched && context.mounted) {
+              _snack(context, 'Could not open WhatsApp.');
+            }
+          },
+        ),
+      );
+    } else {
+      final launched = await WhatsAppService.launchWhatsApp(
+        phone: customer.dialablePhoneNumber,
+        message: message,
+        app: availableApp,
+      );
+      if (!launched && context.mounted) {
+        _snack(context, 'Could not open WhatsApp.');
+      }
     }
   }
 
