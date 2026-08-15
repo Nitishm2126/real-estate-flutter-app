@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/customer.dart';
 import '../models/follow_up.dart';
+import 'notification_service.dart';
 
 /// Sorting / filter modes available in the dashboard.
 enum SortMode {
@@ -380,10 +381,18 @@ class CustomerService extends ChangeNotifier {
       debugPrint('[CS] Supabase response: SUCCESS');
 
       // ── Step 2: Remove from local cache immediately upon confirmation ──
+      final customerToRemove = _customers.firstWhere((c) => c.id == deleteId);
       _customers.removeWhere((c) => c.id == deleteId);
       _recalculateStats();
       debugPrint(
           '[CS] Local list length after immediate remove: ${_customers.length}');
+
+      // ── Step 3: Cancel all notifications for this customer ──
+      try {
+        await NotificationService().cancelAllForCustomer(customerToRemove);
+      } catch (e) {
+        debugPrint('Failed to cancel notifications for deleted customer: $e');
+      }
 
       debugPrint('[CS] --- DELETE FLOW COMPLETE ---');
     } on PostgrestException catch (e) {
@@ -422,6 +431,13 @@ class CustomerService extends ChangeNotifier {
         updatedHistory
             .sort((a, b) => b.followUpNumber.compareTo(a.followUpNumber));
         _customers[index] = c.copyWith(followUpHistory: updatedHistory);
+        
+        try {
+          await NotificationService()
+              .scheduleFollowUpNotification(_customers[index], newFollowUp);
+        } catch (e) {
+          debugPrint('Failed to schedule notification: $e');
+        }
       }
     } on PostgrestException catch (e) {
       _errorMessage = 'Failed to save follow-up history: ${e.message}';
@@ -459,6 +475,16 @@ class CustomerService extends ChangeNotifier {
           updatedHistory
               .sort((a, b) => b.followUpNumber.compareTo(a.followUpNumber));
           _customers[index] = c.copyWith(followUpHistory: updatedHistory);
+          
+          try {
+            await NotificationService().cancelNotification(updatedFollowUp.id!);
+            if (!updatedFollowUp.isCompleted) {
+              await NotificationService()
+                  .scheduleFollowUpNotification(_customers[index], updatedFollowUp);
+            }
+          } catch (e) {
+            debugPrint('Failed to reschedule notification: $e');
+          }
         }
       }
     } catch (e) {
@@ -484,6 +510,12 @@ class CustomerService extends ChangeNotifier {
         final updatedHistory = List<FollowUp>.from(c.followUpHistory)
           ..removeWhere((h) => h.id == followUp.id);
         _customers[index] = c.copyWith(followUpHistory: updatedHistory);
+        
+        try {
+          await NotificationService().cancelNotification(followUp.id!);
+        } catch (e) {
+          debugPrint('Failed to cancel notification: $e');
+        }
       }
     } catch (e) {
       _errorMessage = 'Failed to delete follow-up history: $e';
@@ -521,6 +553,9 @@ class CustomerService extends ChangeNotifier {
           completedAt: !isCompleted ? DateTime.now() : null,
         );
         await updateFollowUpHistory(updatedH);
+        
+        // Notification is handled inside updateFollowUpHistory, 
+        // so we don't need to explicitly cancel/schedule here.
       }
     }
   }

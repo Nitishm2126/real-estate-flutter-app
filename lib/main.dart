@@ -8,8 +8,13 @@ import 'utils/theme.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await NotificationService().initialize();
+  await NotificationService().requestPermissions();
 
   await Supabase.initialize(
     url: AppConstants.supabaseUrl,

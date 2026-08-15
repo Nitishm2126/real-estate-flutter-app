@@ -91,6 +91,28 @@ class FollowUpHistorySection extends StatelessWidget {
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
+                                if (!followUp.isCompleted && followUp.followUpTime != null && followUp.followUpTime!.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.notifications_active_rounded, size: 12, color: AppColors.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Reminder Scheduled',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 if (followUp.isCompleted)
                                   const Icon(Icons.check_circle_rounded, color: AppColors.statusBooked, size: 16),
                               ],
