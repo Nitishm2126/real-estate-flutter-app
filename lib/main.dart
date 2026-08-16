@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'screens/navigation_shell.dart';
 import 'services/customer_service.dart';
+import 'services/theme_service.dart';
 import 'utils/constants.dart';
 import 'utils/theme.dart';
 
@@ -21,7 +22,15 @@ void main() async {
     publishableKey: AppConstants.supabaseAnonKey,
   );
 
-  runApp(const McpAvadiApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CustomerService()),
+        ChangeNotifierProvider(create: (_) => ThemeService()),
+      ],
+      child: const McpAvadiApp(),
+    ),
+  );
 }
 
 /// Root widget for the MCP Avadi CRM app.
@@ -30,14 +39,15 @@ class McpAvadiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => CustomerService(),
-      child: MaterialApp(
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const NavigationShell(),
-      ),
+    final themeService = context.watch<ThemeService>();
+
+    return MaterialApp(
+      title: AppConstants.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      home: const NavigationShell(),
     );
   }
 }

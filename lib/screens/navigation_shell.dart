@@ -12,6 +12,7 @@ import '../services/customer_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
 import '../widgets/add_customer_bottom_sheet.dart';
+import '../widgets/crm_drawer.dart';
 
 /// Central navigation shell that dynamically switches between
 /// a premium bottom navigation bar (mobile) and a sidebar (tablet/desktop).
@@ -51,6 +52,40 @@ class _NavigationShellState extends State<NavigationShell> {
         useSafeArea: true,
         builder: (_) => const AddCustomerBottomSheet(),
       );
+    }
+  }
+
+  void _onDrawerItemSelected(int index) {
+    if (index == 4) {
+      // Push Follow-up List on mobile
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const FollowUpListScreen(
+            initialFilter: SortMode.followUpsToday,
+            title: 'Follow-ups',
+          ),
+        ),
+      );
+    } else if (index == 5) {
+      // Push PDF Reports on mobile
+      final service = context.read<CustomerService>();
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfReportScreen(
+            customers: service.customers,
+            totalCustomers: service.totalCustomers,
+            bookedCustomers: service.bookedCustomers,
+            registrationCompleted: service.registrationCompleted,
+          ),
+        ),
+      );
+    } else {
+      // Normal tab switches (Dashboard, Customers, Settings, More Options)
+      setState(() {
+        _selectedIndex = index;
+      });
     }
   }
 
@@ -99,7 +134,7 @@ class _NavigationShellState extends State<NavigationShell> {
             // Left sidebar
             _buildSidebar(width),
             // Divider
-            const VerticalDivider(width: 1, thickness: 1, color: AppColors.divider),
+            VerticalDivider(width: 1, thickness: 1, color: AppColors.divider),
             // Dynamic content
             Expanded(
               child: IndexedStack(
@@ -113,6 +148,10 @@ class _NavigationShellState extends State<NavigationShell> {
     } else {
       return Scaffold(
         backgroundColor: AppColors.background,
+        drawer: CRMDrawer(
+          selectedIndex: _selectedIndex,
+          onItemSelected: _onDrawerItemSelected,
+        ),
         body: IndexedStack(
           index: _selectedIndex,
           children: mobilePages,
@@ -148,7 +187,7 @@ class _NavigationShellState extends State<NavigationShell> {
                       AppConstants.logoAsset,
                       width: 32,
                       height: 32,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, __, ___) => Icon(
                         Icons.apartment_rounded,
                         color: AppColors.gold,
                         size: 24,
@@ -188,7 +227,7 @@ class _NavigationShellState extends State<NavigationShell> {
               AppConstants.logoAsset,
               width: 32,
               height: 32,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, __, ___) => Icon(
                 Icons.apartment_rounded,
                 color: AppColors.gold,
                 size: 24,
@@ -303,7 +342,7 @@ class _NavigationShellState extends State<NavigationShell> {
             width: 36,
             height: 36,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Icon(
+            errorBuilder: (_, __, ___) => Icon(
               Icons.person_rounded,
               color: AppColors.gold,
               size: 20,
@@ -326,7 +365,7 @@ class _NavigationShellState extends State<NavigationShell> {
                 width: 36,
                 height: 36,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (_, __, ___) => Icon(
                   Icons.person_rounded,
                   color: AppColors.gold,
                   size: 20,

@@ -36,7 +36,7 @@ class SearchFilterBar extends StatelessWidget {
                 color: AppColors.textMuted,
                 fontSize: 14,
               ),
-              prefixIcon: const Icon(
+              prefixIcon: Icon(
                 Icons.search_rounded,
                 color: AppColors.primary,
                 size: 20,
@@ -53,7 +53,7 @@ class SearchFilterBar extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppRadius.md),
-                borderSide: const BorderSide(color: AppColors.gold, width: 2),
+                borderSide: BorderSide(color: AppColors.gold, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 14),
             ),

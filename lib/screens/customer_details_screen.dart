@@ -157,8 +157,6 @@ class CustomerDetailsScreen extends StatelessWidget {
           SliverAppBar(
             expandedHeight: 260,
             pinned: true,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
             elevation: 0,
             actions: [
               Consumer<CustomerService>(builder: (context, service, child) {
@@ -179,7 +177,7 @@ class CustomerDetailsScreen extends StatelessWidget {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       AppColors.primaryDark,
@@ -208,7 +206,7 @@ class CustomerDetailsScreen extends StatelessWidget {
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                gradient: const LinearGradient(
+                                gradient: LinearGradient(
                                   colors: [AppColors.gold, AppColors.goldDark],
                                 ),
                                 boxShadow: [
@@ -633,7 +631,7 @@ class _NotesCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.notes_rounded,
+              Icon(Icons.notes_rounded,
                   size: 16, color: AppColors.goldDark),
               const SizedBox(width: 8),
               Text(

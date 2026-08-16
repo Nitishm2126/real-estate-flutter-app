@@ -48,9 +48,6 @@ class CustomersScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
             title: Text(
               'Customers',
               style: GoogleFonts.poppins(
@@ -143,7 +140,7 @@ class CustomersScreen extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.wifi_off_rounded,
+                            Icon(Icons.wifi_off_rounded,
                                 size: 48, color: AppColors.statusRed),
                             const SizedBox(height: 16),
                             Padding(

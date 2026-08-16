@@ -152,7 +152,7 @@ class CustomerCard extends StatelessWidget {
       elevation: 8,
       color: AppColors.surface,
       items: [
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'call',
           child: _MenuRow(
               icon: Icons.call_rounded,
@@ -166,14 +166,14 @@ class CustomerCard extends StatelessWidget {
               label: 'WhatsApp',
               color: Color(0xFF25D366)),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'edit',
           child: _MenuRow(
               icon: Icons.edit_rounded,
               label: 'Edit',
               color: AppColors.primary),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'delete',
           child: _MenuRow(
               icon: Icons.delete_rounded,
@@ -221,7 +221,7 @@ class CustomerCard extends StatelessWidget {
 
   Widget _buildFollowUpInfo() {
     if (customer.followUpCompleted) {
-      return const _InfoLine(
+      return _InfoLine(
         icon: Icons.check_circle_rounded,
         text: 'Follow-up Completed',
         color: AppColors.statusBooked,
@@ -351,7 +351,7 @@ class CustomerCard extends StatelessWidget {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [AppColors.primary, AppColors.primaryLight],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -464,8 +464,8 @@ class CustomerCard extends StatelessWidget {
                 ),
 
                 // ── Arrow ────────────────────────────────────────
-                const Padding(
-                  padding: EdgeInsets.only(top: 14),
+                Padding(
+                  padding: const EdgeInsets.only(top: 14),
                   child: Icon(
                     Icons.chevron_right_rounded,
                     color: AppColors.textMuted,

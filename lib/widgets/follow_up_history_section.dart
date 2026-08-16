@@ -100,7 +100,7 @@ class FollowUpHistorySection extends StatelessWidget {
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.notifications_active_rounded, size: 12, color: AppColors.primary),
+                                        Icon(Icons.notifications_active_rounded, size: 12, color: AppColors.primary),
                                         const SizedBox(width: 4),
                                         Text(
                                           'Reminder Scheduled',
@@ -114,7 +114,7 @@ class FollowUpHistorySection extends StatelessWidget {
                                     ),
                                   ),
                                 if (followUp.isCompleted)
-                                  const Icon(Icons.check_circle_rounded, color: AppColors.statusBooked, size: 16),
+                                  Icon(Icons.check_circle_rounded, color: AppColors.statusBooked, size: 16),
                               ],
                             ),
                             const SizedBox(height: 4),

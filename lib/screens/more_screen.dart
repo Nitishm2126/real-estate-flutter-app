@@ -49,9 +49,6 @@ class MoreScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
         title: Text(
           'More Options',
           style: GoogleFonts.poppins(
@@ -125,7 +122,7 @@ class MoreScreen extends StatelessWidget {
                 context: context,
                 applicationName: 'MCP Avadi CRM',
                 applicationVersion: '1.0.0',
-                applicationIcon: const Icon(
+                applicationIcon: Icon(
                   Icons.apartment_rounded,
                   color: AppColors.primary,
                   size: 32,
@@ -204,7 +201,7 @@ class MoreScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
                   color: AppColors.textMuted,

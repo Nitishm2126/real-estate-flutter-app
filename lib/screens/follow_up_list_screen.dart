@@ -126,7 +126,7 @@ class _FollowUpTabContent extends StatelessWidget {
         });
 
         if (service.isLoading || service.isSyncing) {
-          return const Center(
+          return Center(
               child: CircularProgressIndicator(color: AppColors.primary));
         }
 

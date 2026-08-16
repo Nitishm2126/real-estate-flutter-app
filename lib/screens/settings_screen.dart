@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../services/customer_service.dart';
+import '../services/theme_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
 
@@ -16,7 +17,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -46,21 +46,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final service = context.watch<CustomerService>();
+    final themeService = context.watch<ThemeService>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Settings',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontSize: 20,
-          ),
-        ),
+        title: const Text('Settings'),
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
@@ -84,10 +75,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.dark_mode_rounded,
               title: 'Dark Theme',
               subtitle: 'Switch application to dark colors',
-              value: _darkModeEnabled,
+              value: themeService.isDarkMode,
               onChanged: (val) {
-                setState(() => _darkModeEnabled = val);
-                _showSnackBar('Dark theme will be enabled in a future release');
+                themeService.toggleTheme(val);
+                _showSnackBar(val ? 'Dark Theme enabled' : 'Light Theme enabled');
               },
             ),
             const Divider(),
@@ -201,6 +192,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               content: '© 2026 Madras City Properties. All Rights Reserved.',
             ),
           ]),
+          const SizedBox(height: AppSpacing.xl),
+          Center(
+            child: Text(
+              'Designed & Developed by Nitish',
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -341,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             trailing ??
-                const Icon(
+                Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 14,
                   color: AppColors.textMuted,

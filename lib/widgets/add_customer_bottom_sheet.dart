@@ -353,7 +353,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
                         color: AppColors.surfaceVariant,
                         borderRadius: BorderRadius.circular(AppRadius.xs),
                       ),
-                      child: const Icon(Icons.close_rounded,
+                      child: Icon(Icons.close_rounded,
                           color: AppColors.textSecondary, size: 18),
                     ),
                   ),
@@ -537,7 +537,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
                           child: ElevatedButton(
                             onPressed: _isSaving ? null : _save,
                             child: _isSaving
-                                ? const SizedBox(
+                                ? SizedBox(
                                     height: 20,
                                     width: 20,
                                     child: CircularProgressIndicator(
@@ -643,8 +643,8 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: 'Date Visited',
-          prefixIcon: const Padding(
-            padding: EdgeInsets.all(12),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12),
             child: Icon(Icons.calendar_month_rounded,
                 color: AppColors.primary, size: 20),
           ),
@@ -652,11 +652,11 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
           fillColor: AppColors.surfaceVariant,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(color: AppColors.divider),
+            borderSide: BorderSide(color: AppColors.divider),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(color: AppColors.divider),
+            borderSide: BorderSide(color: AppColors.divider),
           ),
         ),
         child: Text(
@@ -677,8 +677,8 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: 'Date (Optional)',
-          prefixIcon: const Padding(
-            padding: EdgeInsets.all(12),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12),
             child: Icon(Icons.event_available_rounded,
                 color: AppColors.primary, size: 20),
           ),
@@ -686,11 +686,11 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
           fillColor: AppColors.surfaceVariant,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(color: AppColors.divider),
+            borderSide: BorderSide(color: AppColors.divider),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(color: AppColors.divider),
+            borderSide: BorderSide(color: AppColors.divider),
           ),
         ),
         child: Text(
@@ -715,8 +715,8 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: 'Time (Optional)',
-          prefixIcon: const Padding(
-            padding: EdgeInsets.all(12),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12),
             child: Icon(Icons.access_time_rounded,
                 color: AppColors.primary, size: 20),
           ),
@@ -724,11 +724,11 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
           fillColor: AppColors.surfaceVariant,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(color: AppColors.divider),
+            borderSide: BorderSide(color: AppColors.divider),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            borderSide: const BorderSide(color: AppColors.divider),
+            borderSide: BorderSide(color: AppColors.divider),
           ),
         ),
         child: Text(

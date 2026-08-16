@@ -21,9 +21,9 @@ class WhatsAppSelectionSheet extends StatelessWidget {
         top: AppSpacing.md,
         bottom: MediaQuery.of(context).padding.bottom + AppSpacing.lg,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -173,7 +173,7 @@ class _AppOption extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
               color: AppColors.textMuted,
             ),

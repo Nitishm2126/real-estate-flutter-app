@@ -112,9 +112,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
         final topRecent = recentCustomers.take(5).toList();
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: RefreshIndicator(
+        return Material(
+          color: AppColors.background,
+          child: RefreshIndicator(
             color: AppColors.primary,
             backgroundColor: AppColors.surface,
             strokeWidth: 2.5,
@@ -155,7 +155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.people_outline_rounded, size: 20, color: AppColors.textPrimary),
+                            Icon(Icons.people_outline_rounded, size: 20, color: AppColors.textPrimary),
                             const SizedBox(width: 8),
                             Text(
                               'Recent Customers',
@@ -187,12 +187,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 // ── Recent Customers List ────────────────────────────
                 if (service.isLoading)
-                  const SliverPadding(
-                    padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     sliver: SliverToBoxAdapter(
                       child: Center(
                         child: Padding(
-                          padding: EdgeInsets.all(AppSpacing.xl),
+                          padding: const EdgeInsets.all(AppSpacing.xl),
                           child: CircularProgressIndicator(color: AppColors.primary),
                         ),
                       ),
@@ -294,9 +294,9 @@ class _HeaderAndWelcome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.primaryDark,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(AppRadius.xxl)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadius.xxl)),
       ),
       child: SafeArea(
         bottom: false,
@@ -311,7 +311,12 @@ class _HeaderAndWelcome extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
+                      GestureDetector(
+                        onTap: () {
+                          Scaffold.of(context).openDrawer();
+                        },
+                        child: const Icon(Icons.menu_rounded, color: Colors.white, size: 28),
+                      ),
                       const SizedBox(width: 16),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -348,7 +353,7 @@ class _HeaderAndWelcome extends StatelessWidget {
                             top: 0,
                             child: Container(
                               padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: AppColors.gold,
                                 shape: BoxShape.circle,
                               ),
@@ -479,7 +484,7 @@ class _HeaderAndWelcome extends StatelessWidget {
                                     Container(
                                       width: 8,
                                       height: 8,
-                                      decoration: const BoxDecoration(color: AppColors.statusBooked, shape: BoxShape.circle),
+                                      decoration: BoxDecoration(color: AppColors.statusBooked, shape: BoxShape.circle),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
@@ -533,7 +538,7 @@ class _AnalyticsSection extends StatelessWidget {
                     'View All',
                     style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.goldDark),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.goldDark, size: 18),
+                  Icon(Icons.chevron_right_rounded, color: AppColors.goldDark, size: 18),
                 ],
               ),
             ),
