@@ -22,6 +22,7 @@ enum SortMode {
   followUpsUpcoming,
   followUpsOverdue,
   followUpsCompleted,
+  todayLeads,
 }
 
 /// Single source of truth for customer data using Supabase.
@@ -144,6 +145,21 @@ class CustomerService extends ChangeNotifier {
             .toLowerCase()
             .compareTo(b.customerName.toLowerCase()));
         break;
+      case SortMode.todayLeads:
+        final today = DateTime.now();
+        final todayStr = '${today.year.toString().padLeft(4, '0')}-'
+            '${today.month.toString().padLeft(2, '0')}-'
+            '${today.day.toString().padLeft(2, '0')}';
+        return list.where((c) {
+          if (c.date == null) return false;
+          final d = c.date!.toLocal();
+          final s = '${d.year.toString().padLeft(4, '0')}-'
+              '${d.month.toString().padLeft(2, '0')}-'
+              '${d.day.toString().padLeft(2, '0')}';
+          return s == todayStr;
+        }).toList()
+          ..sort((a, b) =>
+              (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000)));
       case SortMode.booked:
         return list
             .where((c) => c.bookingStatus == BookingStatus.booked)

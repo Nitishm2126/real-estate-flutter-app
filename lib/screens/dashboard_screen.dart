@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/customer.dart';
+import '../screens/customers_screen.dart';
 import '../screens/follow_up_list_screen.dart';
 import '../screens/pdf_report_screen.dart';
 import '../services/customer_service.dart';
@@ -569,6 +570,11 @@ class _AnalyticsSection extends StatelessWidget {
                 trendText: 'vs last month',
                 isPositive: true,
                 percentage: '12%',
+                onTap: () {
+                  service.setSearchQuery('');
+                  service.setSortMode(SortMode.newest);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen()));
+                },
               ),
               _StatCard(
                 title: 'Today\'s\nLeads',
@@ -579,6 +585,11 @@ class _AnalyticsSection extends StatelessWidget {
                 trendText: 'vs yesterday',
                 isPositive: true,
                 percentage: '100%',
+                onTap: () {
+                  service.setSearchQuery('');
+                  service.setSortMode(SortMode.todayLeads);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen()));
+                },
               ),
               _StatCard(
                 title: 'Follow-ups\nToday',
@@ -588,6 +599,12 @@ class _AnalyticsSection extends StatelessWidget {
                 iconBg: AppColors.statusPendingBg,
                 trendText: 'vs yesterday',
                 isPositive: false,
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FollowUpListScreen(
+                    initialFilter: SortMode.followUpsToday,
+                    title: 'Follow-ups Today',
+                  )));
+                },
               ),
               _StatCard(
                 title: 'Overdue\nFollow-ups',
@@ -597,6 +614,12 @@ class _AnalyticsSection extends StatelessWidget {
                 iconBg: AppColors.statusRedBg,
                 trendText: 'vs yesterday',
                 isPositive: false,
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FollowUpListScreen(
+                    initialFilter: SortMode.followUpsOverdue,
+                    title: 'Overdue Follow-ups',
+                  )));
+                },
               ),
               _StatCard(
                 title: 'Upcoming\nFollow-ups',
@@ -607,6 +630,12 @@ class _AnalyticsSection extends StatelessWidget {
                 trendText: 'vs yesterday',
                 isPositive: true,
                 percentage: '100%',
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FollowUpListScreen(
+                    initialFilter: SortMode.followUpsUpcoming,
+                    title: 'Upcoming Follow-ups',
+                  )));
+                },
               ),
               _StatCard(
                 title: 'Completed\nFollow-ups',
@@ -616,6 +645,12 @@ class _AnalyticsSection extends StatelessWidget {
                 iconBg: AppColors.statusBookedBg,
                 trendText: 'vs yesterday',
                 isPositive: false,
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FollowUpListScreen(
+                    initialFilter: SortMode.followUpsCompleted,
+                    title: 'Completed Follow-ups',
+                  )));
+                },
               ),
               _StatCard(
                 title: 'Booked\nCustomers',
@@ -625,6 +660,11 @@ class _AnalyticsSection extends StatelessWidget {
                 iconBg: AppColors.gold.withValues(alpha: 0.1),
                 trendText: 'vs yesterday',
                 isPositive: false,
+                onTap: () {
+                  service.setSearchQuery('');
+                  service.setSortMode(SortMode.booked);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen()));
+                },
               ),
               _StatCard(
                 title: 'Registration\nCompleted',
@@ -634,6 +674,11 @@ class _AnalyticsSection extends StatelessWidget {
                 iconBg: AppColors.primary.withValues(alpha: 0.1),
                 trendText: 'vs yesterday',
                 isPositive: false,
+                onTap: () {
+                  service.setSearchQuery('');
+                  service.setSortMode(SortMode.completedReg);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomersScreen()));
+                },
               ),
             ],
           );
@@ -652,6 +697,7 @@ class _StatCard extends StatelessWidget {
   final String trendText;
   final bool isPositive;
   final String? percentage;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.title,
@@ -662,6 +708,7 @@ class _StatCard extends StatelessWidget {
     required this.trendText,
     required this.isPositive,
     this.percentage,
+    this.onTap,
   });
 
   @override
@@ -673,54 +720,63 @@ class _StatCard extends StatelessWidget {
         boxShadow: AppShadows.card,
         border: Border.all(color: AppColors.divider.withValues(alpha: 0.5)),
       ),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconBg,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textPrimary, fontWeight: FontWeight.w600, height: 1.2),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: GoogleFonts.poppins(fontSize: 28, color: AppColors.textPrimary, fontWeight: FontWeight.w800, height: 1.0),
-          ),
-          const SizedBox(height: 8),
-          if (percentage != null)
-            Row(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: isPositive ? AppColors.statusBooked : AppColors.statusRed, size: 12),
-                const SizedBox(width: 2),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 24),
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  percentage!,
-                  style: GoogleFonts.poppins(fontSize: 10, color: isPositive ? AppColors.statusBooked : AppColors.statusRed, fontWeight: FontWeight.w700),
+                  title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textPrimary, fontWeight: FontWeight.w600, height: 1.2),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: GoogleFonts.poppins(fontSize: 28, color: AppColors.textPrimary, fontWeight: FontWeight.w800, height: 1.0),
+                ),
+                const SizedBox(height: 8),
+                if (percentage != null)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(isPositive ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded, color: isPositive ? AppColors.statusBooked : AppColors.statusRed, size: 12),
+                      const SizedBox(width: 2),
+                      Text(
+                        percentage!,
+                        style: GoogleFonts.poppins(fontSize: 10, color: isPositive ? AppColors.statusBooked : AppColors.statusRed, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  )
+                else
+                  Text(
+                    '—',
+                    style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                  ),
+                const SizedBox(height: 2),
+                Text(
+                  trendText,
+                  style: GoogleFonts.poppins(fontSize: 9, color: AppColors.textMuted),
                 ),
               ],
-            )
-          else
-            Text(
-              '—',
-              style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
             ),
-          const SizedBox(height: 2),
-          Text(
-            trendText,
-            style: GoogleFonts.poppins(fontSize: 9, color: AppColors.textMuted),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -82,6 +82,13 @@ class SearchFilterBar extends StatelessWidget {
                 onTap: () => service.setSortMode(SortMode.oldest),
               ),
               _FilterChip(
+                label: 'Today\'s Leads',
+                mode: SortMode.todayLeads,
+                current: service.sortMode,
+                icon: Icons.person_add_alt_1_rounded,
+                onTap: () => service.setSortMode(SortMode.todayLeads),
+              ),
+              _FilterChip(
                 label: 'A–Z',
                 mode: SortMode.alphabetical,
                 current: service.sortMode,

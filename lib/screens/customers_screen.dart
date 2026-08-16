@@ -79,6 +79,7 @@ class CustomersScreen extends StatelessWidget {
             strokeWidth: 2.5,
             onRefresh: () async {
               await service.syncWithDatabase();
+              if (!context.mounted) return;
               if (service.errorMessage == null) {
                 _showSnackBar(context, 'Data Synced Successfully');
               }

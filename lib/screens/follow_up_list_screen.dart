@@ -76,11 +76,11 @@ class _FollowUpListScreenState extends State<FollowUpListScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          const _FollowUpTabContent(mode: SortMode.followUpsOverdue),
-          const _FollowUpTabContent(mode: SortMode.followUpsToday),
-          const _FollowUpTabContent(mode: SortMode.followUpsUpcoming),
-          const _FollowUpTabContent(mode: SortMode.followUpsCompleted),
+        children: const [
+          _FollowUpTabContent(mode: SortMode.followUpsOverdue),
+          _FollowUpTabContent(mode: SortMode.followUpsToday),
+          _FollowUpTabContent(mode: SortMode.followUpsUpcoming),
+          _FollowUpTabContent(mode: SortMode.followUpsCompleted),
         ],
       ),
     );
