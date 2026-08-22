@@ -12,6 +12,8 @@ import '../services/customer_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
 import '../widgets/add_customer_bottom_sheet.dart';
+import '../widgets/notification_bell_button.dart';
+import '../widgets/profile_menu_button.dart';
 import '../widgets/recent_customer_row.dart';
 
 /// Redesigned Premium CRM Dashboard Screen matching the mobile UI reference.
@@ -345,58 +347,9 @@ class _HeaderAndWelcome extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      // Notification Bell with Badge
-                      Stack(
-                        children: [
-                          const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.gold,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '3',
-                                style: GoogleFonts.poppins(fontSize: 8, color: AppColors.primaryDark, fontWeight: FontWeight.w800),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      const NotificationBellButton(),
                       const SizedBox(width: 16),
-                      // Avatar with Live indicator
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Colors.white.withValues(alpha: 0.2),
-                            child: ClipOval(
-                              child: Image.asset(
-                                AppConstants.photoAsset,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.person, color: Colors.white, size: 24),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            right: -2,
-                            bottom: -2,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: isSyncing ? AppColors.gold : AppColors.statusBooked,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.primaryDark, width: 2),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      ProfileMenuButton(isSyncing: isSyncing),
                     ],
                   ),
                 ],

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -21,6 +22,9 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  final StreamController<String?> selectNotificationStream =
+      StreamController<String?>.broadcast();
+
   bool _isInitialized = false;
 
   Future<void> initialize() async {
@@ -40,12 +44,27 @@ class NotificationService {
     await _flutterLocalNotificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Here we could handle navigating to a specific screen when the user taps
-        debugPrint('Notification clicked with payload: ${response.payload}');
+        if (response.payload != null) {
+          selectNotificationStream.add(response.payload);
+        }
       },
     );
 
     _isInitialized = true;
+  }
+
+  Future<void> checkPendingNotification() async {
+    if (kIsWeb) return;
+    final details =
+        await _flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+    if (details != null &&
+        details.didNotificationLaunchApp &&
+        details.notificationResponse?.payload != null) {
+      // Delay slightly to ensure UI is ready to push
+      Future.delayed(const Duration(milliseconds: 500), () {
+        selectNotificationStream.add(details.notificationResponse!.payload);
+      });
+    }
   }
 
   Future<void> _configureLocalTimeZone() async {
@@ -121,15 +140,12 @@ class NotificationService {
           return;
         }
 
-        final tz.TZDateTime scheduledTzDate =
-            tz.TZDateTime.from(scheduleDate, tz.local);
-
         final notificationId = _generateNotificationId(followUp.id!);
 
         const AndroidNotificationDetails androidPlatformChannelSpecifics =
             AndroidNotificationDetails(
           'follow_up_reminders',
-          'Follow-up Reminders',
+          'MCP Avadi Follow-ups',
           channelDescription: 'Reminders for customer follow-ups',
           importance: Importance.high,
           priority: Priority.high,
@@ -139,23 +155,43 @@ class NotificationService {
         const NotificationDetails platformChannelSpecifics =
             NotificationDetails(android: androidPlatformChannelSpecifics);
 
-        String body = 'Follow-up with ${customer.customerName}';
+        String baseBody = 'Follow up with ${customer.customerName}';
         if (followUp.notes.isNotEmpty) {
-          body += ': ${followUp.notes}';
+          baseBody += ': ${followUp.notes}';
         }
 
-        await _flutterLocalNotificationsPlugin.zonedSchedule(
-          id: notificationId,
-          title: 'MCP Avadi - Follow-up Reminder',
-          body: body,
-          scheduledDate: scheduledTzDate,
-          notificationDetails: platformChannelSpecifics,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          payload: customer.id, // Pass customer ID for later navigation
-        );
+        // 1. Exact Due / Overdue notification
+        if (scheduleDate.isAfter(DateTime.now())) {
+          final tz.TZDateTime scheduledTzDate =
+              tz.TZDateTime.from(scheduleDate, tz.local);
+          await _flutterLocalNotificationsPlugin.zonedSchedule(
+            id: notificationId,
+            title: 'Follow-up Reminder',
+            body: '$baseBody is due now.',
+            scheduledDate: scheduledTzDate,
+            notificationDetails: platformChannelSpecifics,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            payload: customer.id,
+          );
+        }
 
-        debugPrint(
-            'Scheduled notification $notificationId for $scheduledTzDate');
+        // 2. Upcoming 30 mins before notification
+        final upcomingDate = scheduleDate.subtract(const Duration(minutes: 30));
+        if (upcomingDate.isAfter(DateTime.now())) {
+          final tz.TZDateTime upcomingTzDate =
+              tz.TZDateTime.from(upcomingDate, tz.local);
+          await _flutterLocalNotificationsPlugin.zonedSchedule(
+            id: notificationId + 1, // Offset by 1
+            title: 'Upcoming Follow-up',
+            body: 'Upcoming follow-up in 30 mins with ${customer.customerName}',
+            scheduledDate: upcomingTzDate,
+            notificationDetails: platformChannelSpecifics,
+            androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            payload: customer.id,
+          );
+        }
+
+        debugPrint('Scheduled notifications for followUp ${followUp.id}');
       }
     } catch (e) {
       debugPrint('Failed to schedule notification: $e');
@@ -167,6 +203,7 @@ class NotificationService {
     try {
       final id = _generateNotificationId(followUpId);
       await _flutterLocalNotificationsPlugin.cancel(id: id);
+      await _flutterLocalNotificationsPlugin.cancel(id: id + 1); // Cancel upcoming
       debugPrint('Canceled notification $id');
     } catch (e) {
       debugPrint('Failed to cancel notification: $e');
