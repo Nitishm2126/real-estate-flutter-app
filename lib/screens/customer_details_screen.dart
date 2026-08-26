@@ -6,12 +6,16 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/customer.dart';
+import '../models/follow_up.dart';
 import '../services/customer_service.dart';
 import '../services/whatsapp_service.dart';
 import '../utils/theme.dart';
 import '../widgets/add_customer_bottom_sheet.dart';
-import '../widgets/whatsapp_selection_sheet.dart';
+import '../widgets/add_follow_up_sheet.dart';
+import '../widgets/customer_timeline.dart';
 import '../widgets/follow_up_history_section.dart';
+import '../widgets/next_followup_sheet.dart';
+import '../widgets/whatsapp_selection_sheet.dart';
 
 /// Full-detail view for a single customer with Hero animation,
 /// working Call and WhatsApp buttons, and status badges.
@@ -106,16 +110,32 @@ class CustomerDetailsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _toggleFollowUp(
+  Future<void> _completeFollowUpFromHeader(
       BuildContext context, Customer currentCustomer) async {
     final service = context.read<CustomerService>();
     final isCompleted = currentCustomer.followUpCompleted;
 
     try {
       await service.toggleFollowUp(currentCustomer);
-      if (context.mounted) {
-        _showSnackBar(context,
-            !isCompleted ? 'Follow-up Marked Completed' : 'Follow-up Reopened');
+      if (!context.mounted) return;
+      if (!isCompleted) {
+        // Show next follow-up sheet after completing
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          useSafeArea: true,
+          builder: (_) => NextFollowUpSheet(
+            customer: currentCustomer,
+            completedFollowUp: currentCustomer.followUpHistory.isNotEmpty
+                ? currentCustomer.followUpHistory.first
+                : (currentCustomer.followUpHistory.isEmpty
+                    ? _makeDummyFollowUp(currentCustomer)
+                    : currentCustomer.followUpHistory.first),
+          ),
+        );
+      } else {
+        _showSnackBar(context, 'Follow-up Reopened');
       }
     } catch (e) {
       if (context.mounted) {
@@ -123,6 +143,18 @@ class CustomerDetailsScreen extends StatelessWidget {
             isError: true);
       }
     }
+  }
+
+  /// Minimal stub follow-up for when history is empty.
+  FollowUp _makeDummyFollowUp(Customer c) {
+    return FollowUp(
+      id: c.id,
+      customerId: c.id ?? '',
+      followUpNumber: 1,
+      followUpDate: c.followUpDate ?? DateTime.now(),
+      followUpTime: c.followUpTime,
+      notes: c.followUpNotes,
+    );
   }
 
   void _openEditSheet(BuildContext context,
@@ -286,20 +318,38 @@ class CustomerDetailsScreen extends StatelessWidget {
 
                     const SizedBox(height: AppSpacing.md),
 
+                    // Quick Actions Bar
+                    _QuickActionsBar(
+                      customer: currentCustomer,
+                      onCall: () => _call(context),
+                      onWhatsApp: () => _whatsApp(context),
+                      onAddFollowUp: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => AddFollowUpSheet(initialCustomer: currentCustomer),
+                        );
+                      },
+                      onEdit: () => _openEditSheet(context),
+                    ).animate().fadeIn(duration: 350.ms, delay: 150.ms).slideY(begin: 0.1),
+
+                    const SizedBox(height: AppSpacing.md),
+
                     // Info Card
                     _InfoCard(customer: currentCustomer)
                         .animate()
                         .fadeIn(duration: 350.ms, delay: 200.ms)
                         .slideY(begin: 0.1),
 
-                    // Notes Card (always show as requested)
+                    // Notes Card
                     const SizedBox(height: AppSpacing.md),
                     _NotesCard(notes: currentCustomer.notes)
                         .animate()
                         .fadeIn(duration: 350.ms, delay: 300.ms)
                         .slideY(begin: 0.1),
 
-                    // Follow-up Card
+                    // Active Follow-up Card (customer-level)
                     if (currentCustomer.followUpDate != null) ...[
                       const SizedBox(height: AppSpacing.md),
                       _FollowUpCard(customer: currentCustomer)
@@ -308,44 +358,15 @@ class CustomerDetailsScreen extends StatelessWidget {
                           .slideY(begin: 0.1),
                     ],
 
-                    const SizedBox(height: AppSpacing.md),
-
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _ActionButton(
-                            label: 'Call Customer',
-                            icon: Icons.call_rounded,
-                            color: AppColors.statusBooked,
-                            bgColor: AppColors.statusBookedBg,
-                            onTap: () => _call(context),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: _ActionButton(
-                            label: 'WhatsApp',
-                            icon: Icons.chat_rounded,
-                            color: const Color(0xFF25D366),
-                            bgColor: const Color(0xFFDCFCE7),
-                            onTap: () => _whatsApp(context),
-                          ),
-                        ),
-                      ],
-                    ).animate().fadeIn(duration: 350.ms, delay: 400.ms).scale(
-                          begin: const Offset(0.95, 0.95),
-                          curve: Curves.easeOutBack,
-                        ),
-
+                    // Legacy: mark complete / reopen for customer-level follow-up
                     if (currentCustomer.followUpDate != null)
                       Padding(
                         padding: const EdgeInsets.only(top: AppSpacing.sm),
                         child: SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            onPressed: () =>
-                                _toggleFollowUp(context, currentCustomer),
+                            onPressed: () => _completeFollowUpFromHeader(
+                                context, currentCustomer),
                             icon: Icon(
                               currentCustomer.followUpCompleted
                                   ? Icons.replay_rounded
@@ -373,40 +394,21 @@ class CustomerDetailsScreen extends StatelessWidget {
                                   : AppColors.statusBookedBg,
                             ),
                           ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 350.ms, delay: 500.ms)
-                            .scale(
-                              begin: const Offset(0.95, 0.95),
-                              curve: Curves.easeOutBack,
-                            ),
-                      ),
-
-                    if (currentCustomer.followUpCompleted)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.sm),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () => _openEditSheet(context,
-                                isSchedulingNextFollowUp: true),
-                            icon: const Icon(Icons.add_task_rounded, size: 20),
-                            label: const Text('Schedule Next Follow-up'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                              ),
-                            ),
-                          ),
-                        ).animate().fadeIn().slideY(begin: 0.1),
+                        ).animate().fadeIn(duration: 350.ms, delay: 400.ms),
                       ),
 
                     const SizedBox(height: AppSpacing.lg),
+
+                    // Follow-up History (with quick actions per card)
                     FollowUpHistorySection(customer: currentCustomer),
+
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Customer Activity Timeline
+                    CustomerTimeline(customer: currentCustomer)
+                        .animate()
+                        .fadeIn(duration: 400.ms),
+
                     const SizedBox(height: AppSpacing.xxl),
                   ],
                 ),
@@ -419,7 +421,114 @@ class CustomerDetailsScreen extends StatelessWidget {
   }
 }
 
-// ─── Status Row ──────────────────────────────────────────────────────────────
+// ─── Quick Actions Bar ───────────────────────────────────────────────
+class _QuickActionsBar extends StatelessWidget {
+  const _QuickActionsBar({
+    required this.customer,
+    required this.onCall,
+    required this.onWhatsApp,
+    required this.onAddFollowUp,
+    required this.onEdit,
+  });
+  final Customer customer;
+  final VoidCallback onCall;
+  final VoidCallback onWhatsApp;
+  final VoidCallback onAddFollowUp;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.divider, width: 1),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _QuickBtn(
+            icon: Icons.call_rounded,
+            label: 'Call',
+            color: AppColors.statusBooked,
+            onTap: onCall,
+          ),
+          _QuickBtn(
+            icon: Icons.chat_rounded,
+            label: 'WhatsApp',
+            color: const Color(0xFF25D366),
+            onTap: onWhatsApp,
+          ),
+          _QuickBtn(
+            icon: Icons.add_task_rounded,
+            label: 'Follow-up',
+            color: AppColors.primary,
+            onTap: onAddFollowUp,
+          ),
+          _QuickBtn(
+            icon: Icons.edit_rounded,
+            label: 'Edit',
+            color: AppColors.goldDark,
+            onTap: onEdit,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickBtn extends StatelessWidget {
+  const _QuickBtn({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Status Row ───────────────────────────────────────────────────
 class _StatusRow extends StatelessWidget {
   const _StatusRow({required this.customer});
   final Customer customer;
@@ -659,71 +768,7 @@ class _NotesCard extends StatelessWidget {
   }
 }
 
-// ─── Action Buttons ───────────────────────────────────────────────────────────
-class _ActionButton extends StatefulWidget {
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.bgColor,
-    required this.onTap,
-  });
-  final String label;
-  final IconData icon;
-  final Color color, bgColor;
-  final VoidCallback onTap;
 
-  @override
-  State<_ActionButton> createState() => _ActionButtonState();
-}
-
-class _ActionButtonState extends State<_ActionButton> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          decoration: BoxDecoration(
-            color: widget.color,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withValues(alpha: 0.35),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Icon(widget.icon, color: Colors.white, size: 26),
-              const SizedBox(height: 6),
-              Text(
-                widget.label,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // --- Follow-up Card ----------------------------------------------------------
 class _FollowUpCard extends StatelessWidget {
@@ -746,15 +791,35 @@ class _FollowUpCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Next Active Follow-up',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                    letterSpacing: 0.5,
+                Expanded(
+                  child: Text(
+                    'Next Active Follow-up',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
+                TextButton.icon(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => AddFollowUpSheet(initialCustomer: customer),
+                    );
+                  },
+                  icon: Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
+                  label: Text('Add Follow-up', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 if (customer.followUpCompleted)
                   Container(
                     padding:

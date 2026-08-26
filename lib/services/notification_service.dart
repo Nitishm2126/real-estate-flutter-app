@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:flutter_timezone/flutter_timezone.dart';
 
 import '../models/follow_up.dart';
 import '../models/customer.dart';
@@ -126,19 +125,11 @@ class NotificationService {
     tz.initializeTimeZones();
 
     try {
-      final TimezoneInfo tzInfo = await FlutterTimezone.getLocalTimezone();
-      final String tzIdentifier = tzInfo.identifier;
-      tz.setLocalLocation(tz.getLocation(tzIdentifier));
-      debugPrint('[NS] Timezone set to: $tzIdentifier');
+      // Force Asia/Kolkata for India time
+      tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+      debugPrint('[NS] Timezone forced to: Asia/Kolkata');
     } catch (e) {
-      debugPrint('[NS] Could not get local timezone, falling back to UTC: $e');
-      // Fallback: try IST explicitly (app is in India) or use UTC
-      try {
-        tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
-        debugPrint('[NS] Timezone fallback set to: Asia/Kolkata');
-      } catch (_) {
-        debugPrint('[NS] Could not set fallback timezone – using UTC.');
-      }
+      debugPrint('[NS] Could not set Asia/Kolkata timezone – fallback to UTC: $e');
     }
   }
 
@@ -242,7 +233,7 @@ class NotificationService {
 
     // Parse time string (supports "HH:mm", "H:mm AM/PM", "h:mm a" formats)
     final DateTime? scheduleDate =
-        _parseScheduleDateTime(followUp.followUpDate, followUp.followUpTime!);
+        parseScheduleDateTime(followUp.followUpDate, followUp.followUpTime!);
 
     if (scheduleDate == null) {
       debugPrint(
@@ -374,7 +365,7 @@ class NotificationService {
 
   /// Parses a time string like "10:30", "10:30 AM", "2:30 PM" and combines
   /// with [date] to produce a [DateTime].
-  DateTime? _parseScheduleDateTime(DateTime date, String timeStr) {
+  DateTime? parseScheduleDateTime(DateTime date, String timeStr) {
     try {
       final String cleaned = timeStr.trim();
       // Split on colon and/or whitespace (handles "HH:mm", "H:mm AM", "H:mm PM")
@@ -398,7 +389,7 @@ class NotificationService {
         minute,
       );
     } catch (e) {
-      debugPrint('[NS] _parseScheduleDateTime error for "$timeStr": $e');
+      debugPrint('[NS] parseScheduleDateTime error for "$timeStr": $e');
       return null;
     }
   }
@@ -411,5 +402,43 @@ class NotificationService {
       buf.write(': ${followUp.notes}');
     }
     return buf.toString();
+  }
+
+  // ─── Debug / Test ──────────────────────────────────────────────────
+
+  /// A safe DEBUG-only method to trigger an immediate test notification.
+  /// Used solely to determine if basic Android native notification delivery works
+  /// independently of the scheduling logic.
+  Future<void> showTestNotification() async {
+    if (kIsWeb) return;
+    debugPrint('[NS] Triggering immediate test notification...');
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: _channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/launcher_icon',
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const NotificationDetails notificationDetails =
+        NotificationDetails(android: androidDetails);
+
+    try {
+      await _plugin.show(
+        id: 999999, // safe debug ID
+        title: 'MCP Avadi Test Notification',
+        body: 'Native notifications are working correctly.',
+        notificationDetails: notificationDetails,
+        payload: 'test_payload',
+      );
+      debugPrint('[NS] Test notification displayed successfully.');
+    } catch (e) {
+      debugPrint('[NS] Failed to display test notification: $e');
+    }
   }
 }

@@ -8,6 +8,13 @@ import '../models/customer.dart';
 import '../models/follow_up.dart';
 import 'notification_service.dart';
 
+/// A follow-up record paired with its owning customer.
+class FollowUpWithCustomer {
+  final FollowUp followUp;
+  final Customer customer;
+  const FollowUpWithCustomer({required this.followUp, required this.customer});
+}
+
 /// Sorting / filter modes available in the dashboard.
 enum SortMode {
   newest,
@@ -90,31 +97,32 @@ class CustomerService extends ChangeNotifier {
 
     final todayStart = DateTime(today.year, today.month, today.day);
 
-    followUpsTodayCount = _customers.where((c) {
-      if (c.followUpDate == null || c.followUpCompleted) return false;
-      final d = c.followUpDate!.toLocal();
-      final s = '${d.year.toString().padLeft(4, '0')}-'
-          '${d.month.toString().padLeft(2, '0')}-'
-          '${d.day.toString().padLeft(2, '0')}';
-      return s == todayStr;
-    }).length;
+    // Count from individual follow-up history records (not customer-level flags)
+    followUpsTodayCount = 0;
+    overdueFollowUpsCount = 0;
+    upcomingFollowUpsCount = 0;
+    completedFollowUpsCount = 0;
 
-    overdueFollowUpsCount = _customers.where((c) {
-      if (c.followUpDate == null || c.followUpCompleted) return false;
-      final d = c.followUpDate!.toLocal();
-      final followUpStart = DateTime(d.year, d.month, d.day);
-      return followUpStart.isBefore(todayStart);
-    }).length;
-
-    upcomingFollowUpsCount = _customers.where((c) {
-      if (c.followUpDate == null || c.followUpCompleted) return false;
-      final d = c.followUpDate!.toLocal();
-      final followUpStart = DateTime(d.year, d.month, d.day);
-      return followUpStart.isAfter(todayStart);
-    }).length;
-
-    completedFollowUpsCount =
-        _customers.where((c) => c.followUpCompleted).length;
+    for (final c in _customers) {
+      for (final fu in c.followUpHistory) {
+        if (fu.isCompleted) {
+          completedFollowUpsCount++;
+          continue;
+        }
+        final d = fu.followUpDate.toLocal();
+        final fuDay = DateTime(d.year, d.month, d.day);
+        final s = '${d.year.toString().padLeft(4, '0')}-'
+            '${d.month.toString().padLeft(2, '0')}-'
+            '${d.day.toString().padLeft(2, '0')}';
+        if (fuDay.isBefore(todayStart)) {
+          overdueFollowUpsCount++;
+        } else if (s == todayStr) {
+          followUpsTodayCount++;
+        } else {
+          upcomingFollowUpsCount++;
+        }
+      }
+    }
   }
 
   /// Helper to determine the priority of a follow-up for sorting
@@ -126,7 +134,17 @@ class CustomerService extends ChangeNotifier {
     final followUpStart = DateTime(d.year, d.month, d.day);
 
     if (followUpStart.isBefore(todayStart)) return 1; // Overdue
-    if (followUpStart.isAtSameMomentAs(todayStart)) return 2; // Today
+    if (followUpStart.isAtSameMomentAs(todayStart)) {
+      // It's today. If time is passed, it's overdue
+      if (c.followUpTime != null && c.followUpTime!.trim().isNotEmpty) {
+        final parsed = NotificationService().parseScheduleDateTime(
+            followUpStart, c.followUpTime!);
+        if (parsed != null && parsed.isBefore(DateTime.now())) {
+          return 1; // Overdue
+        }
+      }
+      return 2; // Today
+    }
     return 3; // Upcoming
   }
 
@@ -593,16 +611,89 @@ class CustomerService extends ChangeNotifier {
 
   List<Customer> get allCustomersUnfiltered => _customers;
 
+  /// Returns all individual follow-up history records paired with their customer.
+  List<FollowUpWithCustomer> get allFollowUpRecords {
+    final records = <FollowUpWithCustomer>[];
+    for (final c in _customers) {
+      for (final fu in c.followUpHistory) {
+        records.add(FollowUpWithCustomer(followUp: fu, customer: c));
+      }
+    }
+    return records;
+  }
+
+  /// Priority for an individual follow-up record.
+  /// 0=Overdue, 1=Today, 2=Upcoming, 3=Completed
+  int getFollowUpRecordPriority(FollowUp fu) {
+    if (fu.isCompleted) return 3;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final fDate = DateTime(fu.followUpDate.year, fu.followUpDate.month, fu.followUpDate.day);
+    
+    if (fDate.isBefore(today)) return 0;
+    
+    if (fDate.isAtSameMomentAs(today)) {
+      if (fu.followUpTime != null && fu.followUpTime!.trim().isNotEmpty) {
+        final parsed = NotificationService().parseScheduleDateTime(fDate, fu.followUpTime!);
+        if (parsed != null && parsed.isBefore(now)) {
+          return 0; // Overdue if time has passed
+        }
+      }
+      return 1; // Today
+    }
+    
+    return 2;
+  }
+
+  /// Priority for a customer (legacy, used for customer card display).
   int getFollowUpPriority(Customer c) {
-    if (c.followUpDate == null) return -1; // No follow up
-    if (c.followUpCompleted) return 3; // Completed
+    if (c.followUpDate == null) return -1;
+    if (c.followUpCompleted) return 3;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final fDate = DateTime(
         c.followUpDate!.year, c.followUpDate!.month, c.followUpDate!.day);
-    if (fDate.isBefore(today)) return 0; // Overdue
-    if (fDate.isAtSameMomentAs(today)) return 1; // Today
-    return 2; // Upcoming
+        
+    if (fDate.isBefore(today)) return 0;
+    
+    if (fDate.isAtSameMomentAs(today)) {
+      if (c.followUpTime != null && c.followUpTime!.trim().isNotEmpty) {
+        final parsed = NotificationService().parseScheduleDateTime(fDate, c.followUpTime!);
+        if (parsed != null && parsed.isBefore(now)) {
+          return 0; // Overdue
+        }
+      }
+      return 1; // Today
+    }
+    return 2;
+  }
+
+  // ─── Follow-Up Quick Actions ──────────────────────────────────
+
+  /// Marks a single follow-up history record as completed. Cancels its notification.
+  Future<void> completeFollowUp(FollowUp followUp) async {
+    final updated = followUp.copyWith(
+      status: 'Completed',
+      completedAt: DateTime.now(),
+    );
+    await updateFollowUpHistory(updated);
+  }
+
+  /// Reschedules a follow-up to a new date/time. Updates status to 'Rescheduled'.
+  Future<void> rescheduleFollowUp(
+      FollowUp followUp, DateTime newDate, String? newTime) async {
+    final updated = followUp.copyWith(
+      followUpDate: newDate,
+      followUpTime: newTime,
+      status: 'Rescheduled',
+    );
+    await updateFollowUpHistory(updated);
+  }
+
+  /// Updates the notes on a follow-up history record.
+  Future<void> updateFollowUpNote(FollowUp followUp, String note) async {
+    final updated = followUp.copyWith(notes: note);
+    await updateFollowUpHistory(updated);
   }
 
   void setSearchQuery(String query) {
