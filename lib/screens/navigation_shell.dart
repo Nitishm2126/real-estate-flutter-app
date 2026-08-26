@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +7,9 @@ import '../screens/customers_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/follow_up_list_screen.dart';
 import '../screens/more_screen.dart';
+import '../models/notification_item.dart';
 import '../screens/pdf_report_screen.dart';
+import '../screens/notifications_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/customer_service.dart';
 import '../utils/constants.dart';
@@ -56,37 +59,10 @@ class _NavigationShellState extends State<NavigationShell> {
   }
 
   void _onDrawerItemSelected(int index) {
-    if (index == 4) {
-      // Push Follow-up List on mobile
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const FollowUpListScreen(
-            initialFilter: SortMode.followUpsToday,
-            title: 'Follow-ups',
-          ),
-        ),
-      );
-    } else if (index == 5) {
-      // Push PDF Reports on mobile
-      final service = context.read<CustomerService>();
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PdfReportScreen(
-            customers: service.customers,
-            totalCustomers: service.totalCustomers,
-            bookedCustomers: service.bookedCustomers,
-            registrationCompleted: service.registrationCompleted,
-          ),
-        ),
-      );
-    } else {
-      // Normal tab switches (Dashboard, Customers, Settings, More Options)
-      setState(() {
-        _selectedIndex = index;
-      });
-    }
+    setState(() {
+      _selectedIndex = index;
+    });
+    Navigator.pop(context); // Close drawer
   }
 
   @override
@@ -95,16 +71,16 @@ class _NavigationShellState extends State<NavigationShell> {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 768; // 768px breakpoint for sidebar
 
-    final desktopPages = [
+    final List<Widget> pages = [
       const DashboardScreen(),
       const CustomersScreen(),
-      const SettingsScreen(),
-      const MoreScreen(),
       const FollowUpListScreen(
         initialFilter: SortMode.followUpsToday,
         title: 'Follow-ups',
         isInline: true,
       ),
+      const NotificationsScreen(),
+      const SettingsScreen(),
       PdfReportScreen(
         customers: service.customers,
         totalCustomers: service.totalCustomers,
@@ -112,22 +88,17 @@ class _NavigationShellState extends State<NavigationShell> {
         registrationCompleted: service.registrationCompleted,
         isInline: true,
       ),
-    ];
-
-    final mobilePages = [
-      const DashboardScreen(),
-      const CustomersScreen(),
-      const SettingsScreen(),
       const MoreScreen(),
     ];
 
     // Safety check for index out of bounds when switching layouts
-    if (!isDesktop && _selectedIndex > 3) {
+    if (!isDesktop && _selectedIndex > 6) {
       _selectedIndex = 0;
     }
 
     if (isDesktop) {
       return Scaffold(
+        extendBody: true,
         backgroundColor: AppColors.background,
         body: Row(
           children: [
@@ -139,7 +110,7 @@ class _NavigationShellState extends State<NavigationShell> {
             Expanded(
               child: IndexedStack(
                 index: _selectedIndex,
-                children: desktopPages,
+                children: pages,
               ),
             ),
           ],
@@ -147,6 +118,7 @@ class _NavigationShellState extends State<NavigationShell> {
       );
     } else {
       return Scaffold(
+        extendBody: true,
         backgroundColor: AppColors.background,
         drawer: CRMDrawer(
           selectedIndex: _selectedIndex,
@@ -154,9 +126,9 @@ class _NavigationShellState extends State<NavigationShell> {
         ),
         body: IndexedStack(
           index: _selectedIndex,
-          children: mobilePages,
+          children: pages,
         ),
-        bottomNavigationBar: _buildBottomNavigationBar(),
+        bottomNavigationBar: _buildBottomNavigationBar(context),
       );
     }
   }
@@ -282,10 +254,11 @@ class _NavigationShellState extends State<NavigationShell> {
                 ),
                 const SizedBox(height: 16),
 
-                _sidebarItem(4, Icons.notifications_active_rounded, 'Follow-ups', showExtended),
+                _sidebarItem(2, Icons.notifications_active_rounded, 'Follow-ups', showExtended),
+                _sidebarItem(3, Icons.notifications_none_rounded, 'Notifications', showExtended),
                 _sidebarItem(5, Icons.picture_as_pdf_rounded, 'Reports', showExtended),
-                _sidebarItem(2, Icons.settings_rounded, 'Settings', showExtended),
-                _sidebarItem(3, Icons.more_horiz_rounded, 'More', showExtended),
+                _sidebarItem(4, Icons.settings_rounded, 'Settings', showExtended),
+                _sidebarItem(6, Icons.more_horiz_rounded, 'More', showExtended),
               ],
             ),
           ),
@@ -404,100 +377,142 @@ class _NavigationShellState extends State<NavigationShell> {
     );
   }
 
-  // ─── Mobile Bottom Navigation Bar ──────────────────────────────
-  Widget _buildBottomNavigationBar() {
+  // ─── Premium Glassmorphism Bottom Navigation Bar ───────────────────────
+  Widget _buildBottomNavigationBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Glassmorphism styling based on theme
+    final glassColor = isDark 
+        ? const Color(0xFF1A2421).withValues(alpha: 0.75) // Deep green/charcoal
+        : Colors.white.withValues(alpha: 0.82);
+        
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.black.withValues(alpha: 0.06);
+
     return Container(
+      // Floating margins with SafeArea support built-in
+      margin: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: 16 + MediaQuery.paddingOf(context).bottom,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.08),
             blurRadius: 20,
-            offset: const Offset(0, -5),
+            offset: const Offset(0, 8),
           ),
         ],
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          height: 70,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _mobileNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Dashboard'),
-                  _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers'),
-                  const SizedBox(width: 60), // Space for floating button
-                  _mobileNavItem(2, Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
-                  _mobileNavItem(3, Icons.more_horiz_outlined, Icons.more_horiz_rounded, 'More'),
-                ],
-              ),
-              Positioned(
-                top: -24,
-                child: GestureDetector(
-                  onTap: _openAddCustomerForm,
-                  child: Container(
-                    height: 60,
-                    width: 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.gold,
-                      shape: BoxShape.circle,
-                      boxShadow: AppShadows.fab,
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 8,
-                child: Text(
-                  'Add Customer',
-                  style: GoogleFonts.poppins(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            height: 66,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: glassColor,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: borderColor, width: 1.2),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
+                _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
+                _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
+                _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
+                _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _mobileNavItem(int index, IconData outlineIcon, IconData solidIcon, String label) {
+  Widget _mobileNavItem(int index, IconData outlineIcon, IconData solidIcon, String label, bool isDark) {
     final isSelected = _selectedIndex == index;
     final icon = isSelected ? solidIcon : outlineIcon;
-    final color = isSelected ? AppColors.primary : AppColors.textSecondary;
+    
+    final activeColor = AppColors.primary;
+    final inactiveColor = isDark ? Colors.white70 : AppColors.textSecondary;
+    final color = isSelected ? activeColor : inactiveColor;
+    
+    // Notification Badge logic
+    Widget badgeOverlay(Widget child) {
+      if (index != 3) return child;
+      return Consumer<CustomerService>(
+        builder: (context, service, _) {
+          final unreadCount = NotificationItem.getNotifications(service)
+              .where((n) => !service.readNotificationIds.contains(n.id)).length;
+              
+          if (unreadCount == 0) return child;
+          
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              child,
+              Positioned(
+                right: -4,
+                top: -4,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF1A2421) : Colors.white, 
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Text(
+                    unreadCount > 9 ? '9+' : unreadCount.toString(),
+                    style: GoogleFonts.poppins(fontSize: 8, color: AppColors.primaryDark, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     return InkWell(
       onTap: () => setState(() => _selectedIndex = index),
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: SizedBox(
-        width: 70,
+        width: 64,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 24),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppRadius.xxl),
+              ),
+              child: badgeOverlay(Icon(icon, color: color, size: 24)),
+            ),
             const SizedBox(height: 4),
-            Text(
-               label,
-               style: GoogleFonts.poppins(
-                 fontSize: 10,
-                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                 color: color,
-               ),
-               overflow: TextOverflow.ellipsis,
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: isSelected ? 1.0 : 0.8,
+              child: Text(
+                 label,
+                 style: GoogleFonts.poppins(
+                   fontSize: 10,
+                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                   color: color,
+                 ),
+                 overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

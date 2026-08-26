@@ -115,9 +115,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
         final topRecent = recentCustomers.take(5).toList();
 
-        return Material(
-          color: AppColors.background,
-          child: RefreshIndicator(
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          floatingActionButton: FloatingActionButton(
+            onPressed: _openAddCustomerSheet,
+            backgroundColor: AppColors.gold,
+            foregroundColor: AppColors.primary,
+            elevation: 4,
+            child: const Icon(Icons.add_rounded, size: 28),
+          ),
+          body: RefreshIndicator(
             color: AppColors.primary,
             backgroundColor: AppColors.surface,
             strokeWidth: 2.5,

@@ -42,6 +42,19 @@ class CustomerService extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   String? get errorMessage => _errorMessage;
 
+  // ─── Notifications State ──────────────────────────────────────
+  final Set<String> readNotificationIds = {};
+
+  void markNotificationAsRead(String id) {
+    readNotificationIds.add(id);
+    notifyListeners();
+  }
+
+  void markAllNotificationsAsRead(List<String> ids) {
+    readNotificationIds.addAll(ids);
+    notifyListeners();
+  }
+
   // ─── Analytics ────────────────────────────────────────────────
   int totalCustomers = 0;
   int todayLeads = 0;

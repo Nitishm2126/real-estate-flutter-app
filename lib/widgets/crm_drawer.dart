@@ -84,12 +84,8 @@ class CRMDrawer extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
-                _drawerItem(0, Icons.dashboard_rounded, 'Dashboard'),
-                _drawerItem(1, Icons.people_rounded, 'Customers'),
-                _drawerItem(4, Icons.notifications_active_rounded, 'Follow-ups'),
                 _drawerItem(5, Icons.picture_as_pdf_rounded, 'Reports'),
-                _drawerItem(2, Icons.settings_rounded, 'Settings'),
-                _drawerItem(3, Icons.more_horiz_rounded, 'More Options'),
+                _drawerItem(6, Icons.more_horiz_rounded, 'More Options'),
               ],
             ),
           ),

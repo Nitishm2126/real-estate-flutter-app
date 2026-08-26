@@ -4,33 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../services/customer_service.dart';
-import '../models/customer.dart';
 import '../utils/theme.dart';
 import '../screens/customer_details_screen.dart';
-
-class _NotificationItem {
-  final String id;
-  final String title;
-  final String message;
-  final String customerName;
-  final DateTime? date;
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final Customer customer;
-
-  _NotificationItem({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.customerName,
-    this.date,
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.customer,
-  });
-}
+import '../models/notification_item.dart';
 
 class NotificationBellButton extends StatefulWidget {
   const NotificationBellButton({super.key});
@@ -40,101 +16,13 @@ class NotificationBellButton extends StatefulWidget {
 }
 
 class _NotificationBellButtonState extends State<NotificationBellButton> {
-  final Set<String> _readIds = {};
   final MenuController _menuController = MenuController();
   
-  List<_NotificationItem> _getNotifications(CustomerService service) {
-    final List<_NotificationItem> items = [];
-    final today = DateTime.now();
-    final todayStart = DateTime(today.year, today.month, today.day);
-
-    for (final c in service.allCustomersUnfiltered) {
-      if (c.followUpDate != null) {
-        final fDate = c.followUpDate!.toLocal();
-        final followUpStart = DateTime(fDate.year, fDate.month, fDate.day);
-        
-        final id = '${c.id}_${fDate.toIso8601String()}';
-
-        if (c.followUpCompleted) {
-            if (c.followUpCompletedAt != null) {
-               final cDate = c.followUpCompletedAt!.toLocal();
-               if (DateTime(cDate.year, cDate.month, cDate.day).isAtSameMomentAs(todayStart)) {
-                 items.add(_NotificationItem(
-                    id: '${id}_completed',
-                    title: 'Follow-up Completed',
-                    message: 'Completed follow-up for',
-                    customerName: c.customerName,
-                    date: c.followUpCompletedAt,
-                    icon: Icons.check_circle_outline,
-                    iconColor: AppColors.statusBooked,
-                    iconBg: AppColors.statusBookedBg,
-                    customer: c,
-                 ));
-               }
-            }
-        } else {
-            if (followUpStart.isBefore(todayStart)) {
-                items.add(_NotificationItem(
-                    id: '${id}_overdue',
-                    title: 'Overdue Follow-up',
-                    message: 'Follow-up is overdue for',
-                    customerName: c.customerName,
-                    date: c.followUpDate,
-                    icon: Icons.warning_amber_rounded,
-                    iconColor: AppColors.statusRed,
-                    iconBg: AppColors.statusRedBg,
-                    customer: c,
-                ));
-            } else if (followUpStart.isAtSameMomentAs(todayStart)) {
-                items.add(_NotificationItem(
-                    id: '${id}_today',
-                    title: 'Follow-up Today',
-                    message: 'Scheduled follow-up with',
-                    customerName: c.customerName,
-                    date: c.followUpDate,
-                    icon: Icons.calendar_today_rounded,
-                    iconColor: AppColors.statusPending,
-                    iconBg: AppColors.statusPendingBg,
-                    customer: c,
-                ));
-            } else if (followUpStart.isBefore(todayStart.add(const Duration(days: 3)))) {
-                items.add(_NotificationItem(
-                    id: '${id}_upcoming',
-                    title: 'Upcoming Follow-up',
-                    message: 'Upcoming follow-up with',
-                    customerName: c.customerName,
-                    date: c.followUpDate,
-                    icon: Icons.event_rounded,
-                    iconColor: AppColors.statusUpcoming,
-                    iconBg: AppColors.statusUpcomingBg,
-                    customer: c,
-                ));
-            }
-        }
-      }
-    }
-
-    items.sort((a, b) => (b.date ?? DateTime(2000)).compareTo(a.date ?? DateTime(2000)));
-    return items;
-  }
-
-  void _markAsRead(String id) {
-    setState(() {
-      _readIds.add(id);
-    });
-  }
-
-  void _markAllAsRead(List<_NotificationItem> items) {
-    setState(() {
-      _readIds.addAll(items.map((e) => e.id));
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final service = context.watch<CustomerService>();
-    final notifications = _getNotifications(service);
-    final unreadCount = notifications.where((n) => !_readIds.contains(n.id)).length;
+    final notifications = NotificationItem.getNotifications(service);
+    final unreadCount = notifications.where((n) => !service.readNotificationIds.contains(n.id)).length;
 
     return MenuAnchor(
       controller: _menuController,
@@ -202,7 +90,7 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
                     ),
                     if (unreadCount > 0)
                       InkWell(
-                        onTap: () => _markAllAsRead(notifications),
+                        onTap: () => service.markAllNotificationsAsRead(notifications.map((n) => n.id).toList()),
                         child: Text(
                           'Mark all as read',
                           style: GoogleFonts.poppins(
@@ -240,11 +128,11 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
                         itemCount: notifications.length,
                         itemBuilder: (context, index) {
                           final item = notifications[index];
-                          final isRead = _readIds.contains(item.id);
+                          final isRead = service.readNotificationIds.contains(item.id);
 
                           return InkWell(
                             onTap: () {
-                              _markAsRead(item.id);
+                              service.markNotificationAsRead(item.id);
                               if (_menuController.isOpen) {
                                 _menuController.close();
                               }
