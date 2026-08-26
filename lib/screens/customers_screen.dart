@@ -8,7 +8,6 @@ import '../widgets/customer_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/search_filter_bar.dart';
 import '../widgets/shimmer_list.dart';
-import '../widgets/add_customer_bottom_sheet.dart';
 
 /// Dedicated Customers screen for listing, searching, and filtering all customer leads.
 class CustomersScreen extends StatelessWidget {
@@ -40,33 +39,6 @@ class CustomersScreen extends StatelessWidget {
     );
   }
 
-  void _openAddCustomerSheet(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width >= 768;
-    if (isDesktop) {
-      showDialog(
-        context: context,
-        builder: (context) => Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600, maxHeight: 850),
-            child: const AddCustomerBottomSheet(),
-          ),
-        ),
-      );
-    } else {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        useSafeArea: true,
-        builder: (_) => const AddCustomerBottomSheet(),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<CustomerService>(
@@ -75,13 +47,6 @@ class CustomersScreen extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _openAddCustomerSheet(context),
-            backgroundColor: AppColors.gold,
-            foregroundColor: AppColors.primary,
-            elevation: 4,
-            child: const Icon(Icons.add_rounded, size: 28),
-          ),
           appBar: AppBar(
             title: Text(
               'Customers',
@@ -164,14 +129,14 @@ class CustomersScreen extends StatelessWidget {
                 // Customer List
                 if (service.isLoading)
                   const SliverPadding(
-                    padding: EdgeInsets.only(bottom: 100),
+                    padding: EdgeInsets.only(bottom: 160),
                     sliver: SliverToBoxAdapter(child: ShimmerList()),
                   )
                 else if (service.errorMessage != null && customers.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 100),
+                      padding: const EdgeInsets.only(bottom: 160),
                       child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -209,7 +174,7 @@ class CustomersScreen extends StatelessWidget {
                   SliverFillRemaining(
                     hasScrollBody: false,
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 100),
+                      padding: const EdgeInsets.only(bottom: 160),
                       child: EmptyState(
                         isSearchResult: service.searchQuery.trim().isNotEmpty,
                       ),
@@ -218,7 +183,7 @@ class CustomersScreen extends StatelessWidget {
                 else
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md, 0, AppSpacing.md, 100),
+                        AppSpacing.md, 0, AppSpacing.md, 160),
                     sliver: SliverList.builder(
                       itemCount: customers.length,
                       itemBuilder: (context, index) => CustomerCard(

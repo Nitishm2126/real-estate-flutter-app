@@ -115,16 +115,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           });
         final topRecent = recentCustomers.take(5).toList();
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          floatingActionButton: FloatingActionButton(
-            onPressed: _openAddCustomerSheet,
-            backgroundColor: AppColors.gold,
-            foregroundColor: AppColors.primary,
-            elevation: 4,
-            child: const Icon(Icons.add_rounded, size: 28),
-          ),
-          body: RefreshIndicator(
+        return Container(
+          color: AppColors.background,
+          child: RefreshIndicator(
             color: AppColors.primary,
             backgroundColor: AppColors.surface,
             strokeWidth: 2.5,
@@ -255,7 +248,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // ── Bottom Sections: Follow-up Overview & Quick Actions ──
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xl, AppSpacing.md, 100),
+                    padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xl, AppSpacing.md, 160),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final isMobile = constraints.maxWidth < 600;

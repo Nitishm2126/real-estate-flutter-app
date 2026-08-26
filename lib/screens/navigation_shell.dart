@@ -59,10 +59,49 @@ class _NavigationShellState extends State<NavigationShell> {
   }
 
   void _onDrawerItemSelected(int index) {
+    Navigator.pop(context); // Close drawer immediately
+    
+    if (index == 5) {
+      // Profile maps to Settings
+      setState(() => _selectedIndex = 4);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Profile details are managed in Settings.', style: GoogleFonts.poppins(fontSize: 13)),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
+    if (index == 6) {
+      // About MCP Avadi
+      showAboutDialog(
+        context: context,
+        applicationName: 'MCP Avadi CRM',
+        applicationVersion: '1.0.0',
+        applicationIcon: Icon(
+          Icons.apartment_rounded,
+          color: AppColors.primary,
+          size: 32,
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text(
+              'Madras City Properties Premium CRM for tracking and managing real estate customer leads.',
+              style: GoogleFonts.poppins(fontSize: 12, height: 1.4),
+            ),
+          ),
+        ],
+      );
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });
-    Navigator.pop(context); // Close drawer
   }
 
   @override
@@ -383,55 +422,76 @@ class _NavigationShellState extends State<NavigationShell> {
     
     // Glassmorphism styling based on theme
     final glassColor = isDark 
-        ? const Color(0xFF1A2421).withValues(alpha: 0.75) // Deep green/charcoal
-        : Colors.white.withValues(alpha: 0.82);
+        ? const Color(0xFF111A15).withValues(alpha: 0.45) // Dark green/black, 35-50%
+        : Colors.white.withValues(alpha: 0.55); // White, 45-60%
         
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.black.withValues(alpha: 0.06);
+        ? Colors.white.withValues(alpha: 0.15)
+        : Colors.black.withValues(alpha: 0.05);
 
-    return Container(
-      // Floating margins with SafeArea support built-in
-      margin: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: 16 + MediaQuery.paddingOf(context).bottom,
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Small floating + button
+        SizedBox(
+          height: 48,
+          width: 48,
+          child: FloatingActionButton(
+            heroTag: 'nav_add_customer',
+            onPressed: _openAddCustomerForm,
+            backgroundColor: AppColors.gold,
+            foregroundColor: Colors.white,
+            elevation: 4,
+            shape: const CircleBorder(),
+            child: const Icon(Icons.add_rounded, size: 28),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            height: 66,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              color: glassColor,
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: borderColor, width: 1.2),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
-                _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
-                _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
-                _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
-                _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
-              ],
+        ),
+        const SizedBox(height: 12),
+        // Glass Navigation
+        Container(
+          // Floating margins with SafeArea support built-in
+          margin: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            bottom: 16 + MediaQuery.paddingOf(context).bottom,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                height: 66,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: glassColor,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: borderColor, width: 1.0),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
+                    _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
+                    _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
+                    _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
+                    _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 

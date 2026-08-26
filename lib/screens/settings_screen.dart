@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: ListView(
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 100),
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 160),
         children: [
           // ── APP SECTION ──────────────────────────────────────────
           _sectionHeader('APP'),

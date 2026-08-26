@@ -64,7 +64,7 @@ class NotificationsScreen extends StatelessWidget {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 100),
+                  padding: const EdgeInsets.only(bottom: 160),
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final item = notifications[index];

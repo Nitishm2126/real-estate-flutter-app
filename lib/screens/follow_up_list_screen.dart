@@ -32,6 +32,7 @@ class _FollowUpListScreenState extends State<FollowUpListScreen>
     SortMode.followUpsToday,
     SortMode.followUpsUpcoming,
     SortMode.followUpsCompleted,
+    SortMode.followUpsAll,
   ];
 
   @override
@@ -41,7 +42,7 @@ class _FollowUpListScreenState extends State<FollowUpListScreen>
     if (initialIndex == -1) initialIndex = 1; // Default to Today
 
     _tabController =
-        TabController(length: 4, vsync: this, initialIndex: initialIndex);
+        TabController(length: 5, vsync: this, initialIndex: initialIndex);
   }
 
   @override
@@ -71,16 +72,18 @@ class _FollowUpListScreenState extends State<FollowUpListScreen>
             Tab(text: 'TODAY'),
             Tab(text: 'UPCOMING'),
             Tab(text: 'COMPLETED'),
+            Tab(text: 'ALL'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _FollowUpTabContent(mode: SortMode.followUpsOverdue),
-          _FollowUpTabContent(mode: SortMode.followUpsToday),
-          _FollowUpTabContent(mode: SortMode.followUpsUpcoming),
-          _FollowUpTabContent(mode: SortMode.followUpsCompleted),
+        children: [
+          _FollowUpTabContent(mode: SortMode.followUpsOverdue, isInline: widget.isInline),
+          _FollowUpTabContent(mode: SortMode.followUpsToday, isInline: widget.isInline),
+          _FollowUpTabContent(mode: SortMode.followUpsUpcoming, isInline: widget.isInline),
+          _FollowUpTabContent(mode: SortMode.followUpsCompleted, isInline: widget.isInline),
+          _FollowUpTabContent(mode: SortMode.followUpsAll, isInline: widget.isInline),
         ],
       ),
     );
@@ -88,8 +91,9 @@ class _FollowUpListScreenState extends State<FollowUpListScreen>
 }
 
 class _FollowUpTabContent extends StatelessWidget {
-  const _FollowUpTabContent({required this.mode});
+  const _FollowUpTabContent({required this.mode, required this.isInline});
   final SortMode mode;
+  final bool isInline;
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +118,10 @@ class _FollowUpTabContent extends StatelessWidget {
           case SortMode.followUpsCompleted:
             list =
                 list.where((c) => service.getFollowUpPriority(c) == 3).toList();
+            break;
+          case SortMode.followUpsAll:
+            list =
+                list.where((c) => service.getFollowUpPriority(c) != -1).toList();
             break;
           default:
             break;
@@ -142,9 +150,10 @@ class _FollowUpTabContent extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'No Follow-ups',
+                  _getEmptyStateText(),
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
@@ -158,7 +167,7 @@ class _FollowUpTabContent extends StatelessWidget {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, isInline ? 160 : AppSpacing.md),
           itemCount: list.length,
           itemBuilder: (context, index) {
             return CustomerCard(
@@ -169,5 +178,22 @@ class _FollowUpTabContent extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _getEmptyStateText() {
+    switch (mode) {
+      case SortMode.followUpsOverdue:
+        return 'No overdue follow-ups!';
+      case SortMode.followUpsToday:
+        return 'No follow-ups for today.\nYou\'re all caught up!';
+      case SortMode.followUpsUpcoming:
+        return 'No upcoming follow-ups scheduled.';
+      case SortMode.followUpsCompleted:
+        return 'No completed follow-ups yet.';
+      case SortMode.followUpsAll:
+        return 'No follow-ups found.';
+      default:
+        return 'No follow-ups';
+    }
   }
 }
