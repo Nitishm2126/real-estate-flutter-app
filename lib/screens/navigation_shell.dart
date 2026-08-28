@@ -12,6 +12,7 @@ import '../screens/pdf_report_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/customer_service.dart';
+import '../services/theme_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
 import '../widgets/add_customer_bottom_sheet.dart';
@@ -419,15 +420,15 @@ class _NavigationShellState extends State<NavigationShell> {
   // ─── Premium Glassmorphism Bottom Navigation Bar ───────────────────────
   Widget _buildBottomNavigationBar(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeService = context.watch<ThemeService>();
     
     // Glassmorphism styling based on theme
-    final glassColor = isDark 
-        ? const Color(0xFF111A15).withValues(alpha: 0.45) // Dark green/black, 35-50%
-        : Colors.white.withValues(alpha: 0.55); // White, 45-60%
+    final baseGlassColor = isDark ? const Color(0xFF111A15) : Colors.white;
+    final glassColor = baseGlassColor.withValues(alpha: themeService.glassOpacity);
         
     final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.15)
-        : Colors.black.withValues(alpha: 0.05);
+        ? Colors.white.withValues(alpha: themeService.glassBorder)
+        : Colors.black.withValues(alpha: themeService.glassBorder);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -457,38 +458,66 @@ class _NavigationShellState extends State<NavigationShell> {
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            boxShadow: themeService.glassEnabled 
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
+                      blurRadius: themeService.glassShadow * 3, // scale factor for blur radius
+                      offset: Offset(0, themeService.glassShadow),
+                    ),
+                  ] 
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(28),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
-                height: 66,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  color: glassColor,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: borderColor, width: 1.0),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
-                    _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
-                    _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
-                    _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
-                    _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
-                  ],
-                ),
-              ),
-            ),
+            child: themeService.glassEnabled
+                ? BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: themeService.glassBlur, sigmaY: themeService.glassBlur),
+                    child: Container(
+                      height: 66,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: glassColor,
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: borderColor, width: 1.0),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
+                          _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
+                          _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
+                          _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
+                          _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
+                        ],
+                      ),
+                    ),
+                  )
+                : Container(
+                    height: 66,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surface : Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: isDark ? Colors.white12 : Colors.black12, width: 1.0),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
+                        _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
+                        _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
+                        _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
+                        _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
+                      ],
+                    ),
+                  ),
           ),
         ),
       ],
