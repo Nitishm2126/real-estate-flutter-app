@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../models/customer.dart';
@@ -43,6 +46,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
   TimeOfDay? _followUpTime;
 
   bool _isSaving = false;
+  final FlutterNativeContactPicker _contactPicker = FlutterNativeContactPicker();
 
   bool get _isEditing => widget.existingCustomer != null;
 
@@ -109,6 +113,165 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
       ),
     );
     if (picked != null) setState(() => _selectedDate = picked);
+  }
+
+  Future<void> _pickContact() async {
+    // 1. Web safety check
+    if (kIsWeb) {
+      if (!mounted) return;
+      _showContactSnackBar(
+        message: 'Contact import is available on Android devices.',
+        isError: false,
+      );
+      return;
+    }
+
+    // 2. Permission check on Mobile (Android / iOS)
+    try {
+      var status = await Permission.contacts.status;
+      if (status.isPermanentlyDenied) {
+        if (!mounted) return;
+        _showContactSnackBar(
+          message: 'Enable Contacts permission in Android Settings to import a number.',
+          isError: true,
+          actionLabel: 'Settings',
+          onActionPressed: () => openAppSettings(),
+        );
+        return;
+      }
+
+      if (!status.isGranted) {
+        status = await Permission.contacts.request();
+        if (status.isPermanentlyDenied) {
+          if (!mounted) return;
+          _showContactSnackBar(
+            message: 'Enable Contacts permission in Android Settings to import a number.',
+            isError: true,
+            actionLabel: 'Settings',
+            onActionPressed: () => openAppSettings(),
+          );
+          return;
+        }
+        if (!status.isGranted) {
+          if (!mounted) return;
+          _showContactSnackBar(
+            message: 'Contacts permission is required to import a phone number.',
+            isError: true,
+          );
+          return;
+        }
+      }
+
+      // 3. Open Native Contact Picker
+      final contact = await _contactPicker.selectContact();
+      
+      // User cancelled picker -> silently return without error
+      if (contact == null) {
+        return;
+      }
+
+      // 4. Validate phone numbers
+      if (contact.phoneNumbers == null || contact.phoneNumbers!.isEmpty) {
+        if (!mounted) return;
+        _showContactSnackBar(
+          message: "This contact doesn't have a phone number.",
+          isError: true,
+        );
+        return;
+      }
+
+      final rawNumbers = contact.phoneNumbers!;
+      final sanitizedNumbers = rawNumbers
+          .map((e) => e.replaceAll(RegExp(r'[^\d+]'), ''))
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList();
+
+      if (sanitizedNumbers.isEmpty) {
+        if (!mounted) return;
+        _showContactSnackBar(
+          message: "This contact doesn't have a valid phone number.",
+          isError: true,
+        );
+        return;
+      }
+
+      // 5. Populate Field (Single or Multiple selection)
+      if (sanitizedNumbers.length == 1) {
+        setState(() {
+          _phoneCtrl.text = sanitizedNumbers.first;
+        });
+      } else {
+        if (!mounted) return;
+        final selectedNumber = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+            title: Text('Select Phone Number', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w700)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: sanitizedNumbers.map((number) => ListTile(
+                leading: Icon(Icons.phone_rounded, color: AppColors.primary),
+                title: Text(number, style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                onTap: () => Navigator.pop(ctx, number),
+              )).toList(),
+            ),
+          ),
+        );
+        if (selectedNumber != null) {
+          setState(() {
+            _phoneCtrl.text = selectedNumber;
+          });
+        }
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error importing contact: $e\n$stackTrace');
+      if (!mounted) return;
+      _showContactSnackBar(
+        message: 'Unable to import contact. Please enter the number manually.',
+        isError: true,
+      );
+    }
+  }
+
+  void _showContactSnackBar({
+    required String message,
+    required bool isError,
+    String? actionLabel,
+    VoidCallback? onActionPressed,
+  }) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline_rounded : Icons.info_outline_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        action: actionLabel != null && onActionPressed != null
+            ? SnackBarAction(
+                label: actionLabel,
+                textColor: AppColors.gold,
+                onPressed: onActionPressed,
+              )
+            : null,
+        backgroundColor: isError ? AppColors.statusRed : AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   Future<void> _pickFollowUpDate() async {
@@ -389,6 +552,12 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
                       label: 'Phone Number',
                       icon: Icons.phone_rounded,
                       keyboardType: TextInputType.phone,
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.perm_contact_calendar_rounded, size: 20),
+                        color: AppColors.primary,
+                        tooltip: 'Pick from Contacts',
+                        onPressed: _pickContact,
+                      ),
                       validator: (v) {
                         final val = v?.trim() ?? '';
                         if (val.isEmpty) return 'Phone number is required';
@@ -616,6 +785,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
     String? Function(String?)? validator,
     TextInputType? keyboardType,
     int maxLines = 1,
+    Widget? suffixIcon,
   }) {
     return TextFormField(
       controller: controller,
@@ -632,6 +802,7 @@ class _AddCustomerBottomSheetState extends State<AddCustomerBottomSheet> {
           padding: const EdgeInsets.all(12),
           child: Icon(icon, color: AppColors.primary, size: 20),
         ),
+        suffixIcon: suffixIcon,
       ),
     );
   }

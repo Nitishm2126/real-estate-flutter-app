@@ -8,6 +8,8 @@
     <!-- USE_EXACT_ALARM: for Android 13+ (API 33+), no manual user grant required -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- READ_CONTACTS: required to pick phone number from device contacts on Android -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <application
         android:label="MCP Avadi"

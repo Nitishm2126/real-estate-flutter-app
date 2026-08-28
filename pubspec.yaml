@@ -41,6 +41,9 @@ dependencies:
   timezone: ^0.11.1
   flutter_timezone: ^5.1.0
   shared_preferences: ^2.5.5
+  flutter_native_contact_picker: ^0.0.11
+  permission_handler: ^13.0.1
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

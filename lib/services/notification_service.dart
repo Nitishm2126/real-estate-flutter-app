@@ -114,7 +114,7 @@ class NotificationService {
     );
 
     await androidPlugin.createNotificationChannel(channel);
-    debugPrint('[NS] Notification channel created: $_channelId');
+    debugPrint('[NOTIFICATION] Channel: CREATED');
   }
 
   // ─── Timezone ─────────────────────────────────────────────────────
@@ -135,41 +135,44 @@ class NotificationService {
 
   // ─── Permissions ──────────────────────────────────────────────────
 
-  Future<void> requestPermissions() async {
-    if (kIsWeb) return;
+  Future<bool> requestPermissions() async {
+    if (kIsWeb) return false;
 
-    debugPrint('[NS] Requesting notification permissions...');
+    bool isGranted = true;
 
     if (Platform.isAndroid) {
       final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
           _plugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
-      if (androidPlugin == null) return;
+      if (androidPlugin == null) return false;
 
       // Request POST_NOTIFICATIONS permission (Android 13+)
       final bool? notifGranted =
           await androidPlugin.requestNotificationsPermission();
-      debugPrint('[NS] POST_NOTIFICATIONS granted: $notifGranted');
+      debugPrint('[NOTIFICATION] Permission: ${notifGranted == true ? "GRANTED" : "DENIED"}');
+      if (notifGranted == false) {
+        isGranted = false;
+      }
 
       // Check exact alarm permission status
       final bool? canScheduleExact =
           await androidPlugin.canScheduleExactNotifications();
-      debugPrint('[NS] canScheduleExactNotifications: $canScheduleExact');
+      debugPrint('[NOTIFICATION] Exact alarm: ${canScheduleExact == true ? "AVAILABLE" : "UNAVAILABLE"}');
 
-      // On Android 12 (API 31-32), SCHEDULE_EXACT_ALARM may need explicit grant.
-      // On Android 13+ (API 33+), USE_EXACT_ALARM in the manifest is sufficient
-      // and does NOT require a runtime grant.
-      // We only request the runtime permission on API <=32.
       if (canScheduleExact == false) {
-        debugPrint(
-            '[NS] Exact alarm not available – requesting SCHEDULE_EXACT_ALARM...');
+        debugPrint('[NOTIFICATION] Exact alarm not available – requesting SCHEDULE_EXACT_ALARM...');
         await androidPlugin.requestExactAlarmsPermission();
         final bool? recheck =
             await androidPlugin.canScheduleExactNotifications();
-        debugPrint('[NS] Exact alarm after request: $recheck');
+        debugPrint('[NOTIFICATION] Exact alarm after request: $recheck');
+        if (recheck == false) {
+          isGranted = false;
+        }
       }
     }
+    
+    return isGranted;
   }
 
   // ─── App-launch check ─────────────────────────────────────────────
@@ -212,6 +215,12 @@ class NotificationService {
   Future<void> scheduleFollowUpNotification(
       Customer customer, FollowUp followUp) async {
     if (kIsWeb) return;
+
+    final bool permissionsGranted = await requestPermissions();
+    if (!permissionsGranted) {
+      debugPrint('[NOTIFICATION] Cannot schedule native notification: permissions denied.');
+      return;
+    }
 
     if (followUp.id == null) {
       debugPrint('[NS] scheduleFollowUpNotification: followUp.id is null – skip.');
@@ -270,12 +279,9 @@ class NotificationService {
 
     final String body = _buildNotificationBody(customer, followUp);
 
-    debugPrint('[NS] Scheduling notification:');
-    debugPrint('  followUpId : ${followUp.id}');
-    debugPrint('  notificationId : $notificationId');
-    debugPrint('  customer   : ${customer.customerName}');
-    debugPrint('  scheduleDate : $scheduleDate');
-    debugPrint('  timezone   : ${tz.local.name}');
+    debugPrint('[NOTIFICATION] Notification ID: $notificationId');
+    debugPrint('[NOTIFICATION] Scheduled DateTime: $scheduleDate');
+    debugPrint('[NOTIFICATION] Timezone: ${tz.local.name}');
 
     // ── Exact reminder at the follow-up time ──
     await _scheduleExact(
@@ -305,7 +311,6 @@ class NotificationService {
     }
   }
 
-  /// Internal helper: schedules a single exact notification using [zonedSchedule].
   Future<void> _scheduleExact({
     required int id,
     required String title,
@@ -316,7 +321,6 @@ class NotificationService {
   }) async {
     try {
       final tz.TZDateTime tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
-      debugPrint('[NS] _scheduleExact id=$id at $tzDate (tz=${tz.local.name})');
 
       await _plugin.zonedSchedule(
         id: id,
@@ -324,15 +328,13 @@ class NotificationService {
         body: body,
         scheduledDate: tzDate,
         notificationDetails: notificationDetails,
-        // exactAllowWhileIdle fires the alarm even when the device is in
-        // low-power (Doze) mode, but only on APIs where the permission is granted.
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload,
       );
 
-      debugPrint('[NS] Notification id=$id scheduled successfully.');
+      debugPrint('[NOTIFICATION] Native schedule: SUCCESS');
     } catch (e) {
-      debugPrint('[NS] Failed to schedule notification id=$id: $e');
+      debugPrint('[NOTIFICATION] Failed to schedule native notification: $e');
     }
   }
 
@@ -396,12 +398,7 @@ class NotificationService {
 
   /// Builds the notification body text.
   String _buildNotificationBody(Customer customer, FollowUp followUp) {
-    final StringBuffer buf = StringBuffer();
-    buf.write('Follow up with ${customer.customerName}');
-    if (followUp.notes.isNotEmpty) {
-      buf.write(': ${followUp.notes}');
-    }
-    return buf.toString();
+    return 'Follow-up with ${customer.phoneNumber} is due now.';
   }
 
   // ─── Debug / Test ──────────────────────────────────────────────────
