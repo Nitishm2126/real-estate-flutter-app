@@ -8,6 +8,7 @@ class FollowUp {
   final String? followUpTime;
   final String notes;
   final String status;
+  final bool notificationSent;
   final DateTime? completedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -20,6 +21,7 @@ class FollowUp {
     this.followUpTime,
     this.notes = '',
     this.status = 'Pending',
+    this.notificationSent = false,
     this.completedAt,
     this.createdAt,
     this.updatedAt,
@@ -38,6 +40,7 @@ class FollowUp {
     String? followUpTime,
     String? notes,
     String? status,
+    bool? notificationSent,
     DateTime? completedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -50,6 +53,7 @@ class FollowUp {
       followUpTime: followUpTime ?? this.followUpTime,
       notes: notes ?? this.notes,
       status: status ?? this.status,
+      notificationSent: notificationSent ?? this.notificationSent,
       completedAt: completedAt ?? this.completedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -64,6 +68,7 @@ class FollowUp {
       'follow_up_time': followUpTime,
       'notes': notes,
       'status': status,
+      'notification_sent': notificationSent,
       'completed_at': completedAt?.toIso8601String(),
     };
   }
@@ -80,6 +85,7 @@ class FollowUp {
       followUpTime: json['follow_up_time'] as String?,
       notes: json['notes'] as String? ?? '',
       status: json['status'] as String? ?? 'Pending',
+      notificationSent: json['notification_sent'] == true || json['notification_sent'] == 'true',
       completedAt: json['completed_at'] != null
           ? DateTime.tryParse(json['completed_at'].toString())
           : null,

@@ -8,6 +8,14 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/follow_up.dart';
 import '../models/customer.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint('[FCM] Handling a background message: ${message.messageId}');
+}
 
 /// Singleton service that wraps [FlutterLocalNotificationsPlugin].
 ///
@@ -70,6 +78,29 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse:
           _onBackgroundNotificationResponse,
     );
+
+    // Step 4: Setup Firebase Messaging (FCM)
+    if (!kIsWeb && Platform.isAndroid) {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      
+      // Handle foreground FCM messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('[FCM] Foreground message received: ${message.messageId}');
+        
+        // Show local notification using flutter_local_notifications to make it visible
+        if (message.notification != null) {
+          _showFcmAsLocalNotification(message);
+        }
+      });
+      
+      // Handle when user taps FCM notification in background
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('[FCM] Notification tapped in background: ${message.messageId}');
+        if (message.data.containsKey('customer_id')) {
+          selectNotificationStream.add(message.data['customer_id']);
+        }
+      });
+    }
 
     // Step 4: Ensure notification channel exists on Android 8+
     if (!kIsWeb && Platform.isAndroid) {
@@ -180,20 +211,32 @@ class NotificationService {
   Future<void> checkPendingNotification() async {
     if (kIsWeb) return;
 
+    // Check Local Notification Launch
     final details = await _plugin.getNotificationAppLaunchDetails();
     if (details != null &&
         details.didNotificationLaunchApp &&
         details.notificationResponse?.payload != null) {
       debugPrint(
-          '[NS] App launched from notification: payload=${details.notificationResponse!.payload}');
+          '[NS] App launched from local notification: payload=${details.notificationResponse!.payload}');
       Future.delayed(const Duration(milliseconds: 500), () {
         selectNotificationStream.add(details.notificationResponse!.payload);
+      });
+      return; // If launched by local, don't double process
+    }
+    
+    // Check FCM Notification Launch (Terminated state)
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null && initialMessage.data.containsKey('customer_id')) {
+      debugPrint(
+          '[NS] App launched from FCM notification: customer_id=${initialMessage.data['customer_id']}');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        selectNotificationStream.add(initialMessage.data['customer_id']);
       });
     }
   }
 
   // ─── ID generation ────────────────────────────────────────────────
-
+  
   /// Converts a UUID string into a stable positive 32-bit notification ID.
   int _generateNotificationId(String uuid) {
     final cleanUuid = uuid.replaceAll('-', '');
@@ -201,6 +244,39 @@ class NotificationService {
     // Use first 7 hex chars → max value 0xFFFFFFF (268,435,455) which fits in 32-bit
     final hexStr = cleanUuid.substring(0, 7);
     return int.parse(hexStr, radix: 16);
+  }
+
+  // ─── FCM Local Display ────────────────────────────────────────────
+
+  Future<void> _showFcmAsLocalNotification(RemoteMessage message) async {
+    final notification = message.notification;
+    if (notification == null) return;
+    
+    int id = message.hashCode;
+    if (message.data.containsKey('follow_up_id')) {
+      id = _generateNotificationId(message.data['follow_up_id']);
+    }
+
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: _channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/launcher_icon',
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
+
+    await _plugin.show(
+      id,
+      notification.title,
+      notification.body,
+      notificationDetails,
+      payload: message.data['customer_id'],
+    );
   }
 
   // ─── Scheduling ───────────────────────────────────────────────────
