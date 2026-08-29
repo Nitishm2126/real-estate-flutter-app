@@ -170,14 +170,35 @@ class Property {
   factory Property.fromJson(Map<String, dynamic> json) {
     List<String> parseStringList(dynamic val) {
       if (val == null) return [];
-      if (val is List) return val.map((e) => e.toString()).toList();
+      if (val is List) {
+        return val
+            .map((e) => e.toString().replaceAll('"', '').replaceAll("'", '').trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
       if (val is String) {
         final trimmed = val.trim();
+        if (trimmed.isEmpty) return [];
         if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
           final content = trimmed.substring(1, trimmed.length - 1).trim();
           if (content.isEmpty) return [];
-          return content.split(',').map((e) => e.replaceAll('"', '').trim()).toList();
+          return content
+              .split(',')
+              .map((e) => e.replaceAll('"', '').replaceAll("'", '').trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
         }
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          final content = trimmed.substring(1, trimmed.length - 1).trim();
+          if (content.isEmpty) return [];
+          return content
+              .split(',')
+              .map((e) => e.replaceAll('"', '').replaceAll("'", '').trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+        }
+        final clean = trimmed.replaceAll('"', '').replaceAll("'", '').trim();
+        if (clean.isNotEmpty) return [clean];
       }
       return [];
     }
@@ -192,7 +213,7 @@ class Property {
       plotSizes: parseStringList(json['plot_sizes']),
       availability: PropertyAvailabilityX.fromLabel(
           json['availability'] as String? ?? 'Available'),
-      imagePaths: parseStringList(json['image_paths']),
+      imagePaths: parseStringList(json['image_paths'] ?? json['images'] ?? json['image_path']),
       amenities: parseStringList(json['amenities']),
       approvalType: json['approval_type'] as String? ?? '',
       approvalNumber: json['approval_number'] as String? ?? '',

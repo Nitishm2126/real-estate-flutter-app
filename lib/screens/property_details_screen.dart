@@ -11,10 +11,32 @@ import '../utils/theme.dart';
 import '../widgets/add_property_bottom_sheet.dart';
 
 /// Full detail view for a single [Property].
-class PropertyDetailsScreen extends StatelessWidget {
+class PropertyDetailsScreen extends StatefulWidget {
   const PropertyDetailsScreen({super.key, required this.property});
 
   final Property property;
+
+  @override
+  State<PropertyDetailsScreen> createState() => _PropertyDetailsScreenState();
+}
+
+class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
+  late final Future<List<String>> _signedUrlsFuture;
+  Property get property => widget.property;
+
+  @override
+  void initState() {
+    super.initState();
+    final service = context.read<PropertyService>();
+    debugPrint('[Detail] imagePaths for "${property.projectName}": ${property.imagePaths}');
+    if (property.imagePaths.isNotEmpty) {
+      _signedUrlsFuture = Future.wait(
+        property.imagePaths.map((p) => service.getSignedImageUrl(p)).toList(),
+      ).then((urls) => urls.where((u) => u.isNotEmpty).toList());
+    } else {
+      _signedUrlsFuture = Future.value([]);
+    }
+  }
 
   void _openEditSheet(BuildContext context) {
     showModalBottomSheet(
@@ -145,19 +167,28 @@ class PropertyDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final service = context.watch<PropertyService>();
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // SliverAppBar with images
-          SliverAppBar(
-            expandedHeight: property.imagePaths.isNotEmpty ? 260 : 80,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            flexibleSpace: FlexibleSpaceBar(
+      body: FutureBuilder<List<String>>(
+        future: _signedUrlsFuture,
+        builder: (context, snapshot) {
+          final signedUrls = snapshot.data ?? [];
+          return _buildBody(context, signedUrls);
+        },
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, List<String> signedUrls) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        // SliverAppBar with images
+        SliverAppBar(
+          expandedHeight: signedUrls.isNotEmpty ? 260 : 80,
+          pinned: true,
+          backgroundColor: AppColors.primary,
+          flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 property.projectName,
                 style: GoogleFonts.poppins(
@@ -168,8 +199,8 @@ class PropertyDetailsScreen extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              background: property.imagePaths.isNotEmpty
-                  ? _imageCarousel(service)
+              background: signedUrls.isNotEmpty
+                  ? _imageCarousel(signedUrls)
                   : Container(color: AppColors.primaryDark),
             ),
             actions: [
@@ -393,22 +424,34 @@ class PropertyDetailsScreen extends StatelessWidget {
             ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.04),
           ),
         ],
-      ),
-    );
+      );
   }
 
-  Widget _imageCarousel(PropertyService service) {
-    if (property.imagePaths.isEmpty) return const SizedBox.shrink();
+  Widget _imageCarousel(List<String> imageUrls) {
+    if (imageUrls.isEmpty) return const SizedBox.shrink();
     return PageView.builder(
-      itemCount: property.imagePaths.length,
+      itemCount: imageUrls.length,
       itemBuilder: (_, index) {
         return Image.network(
-          service.getImageUrl(property.imagePaths[index]),
+          imageUrls[index],
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => Container(
             color: AppColors.primaryDark,
-            child: Icon(Icons.apartment_rounded,
-                size: 64, color: AppColors.gold.withValues(alpha: 0.4)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.apartment_rounded,
+                    size: 64, color: AppColors.gold.withValues(alpha: 0.4)),
+                const SizedBox(height: 8),
+                Text(
+                  'No Image',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },

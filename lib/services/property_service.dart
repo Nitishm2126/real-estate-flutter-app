@@ -81,7 +81,14 @@ class PropertyService extends ChangeNotifier {
         .order('created_at', ascending: false);
 
     _properties =
-        (response as List).map((row) => Property.fromJson(row)).toList();
+        (response as List).map((row) {
+      debugPrint('[PS] raw row image_paths: ${row['image_paths']} (type: ${row['image_paths']?.runtimeType})');
+      return Property.fromJson(row);
+    }).toList();
+
+    for (final p in _properties) {
+      debugPrint('[PS] parsed imagePaths for "${p.projectName}": ${p.imagePaths}');
+    }
   }
 
   // ─── ADD ───────────────────────────────────────────────────────
@@ -384,14 +391,70 @@ class PropertyService extends ChangeNotifier {
     }
   }
 
-  /// Returns a public URL for a given storage path.
-  String getImageUrl(String storagePath) {
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
-      return storagePath;
+  /// Cleans a raw storage path string: strips quotes, brackets, braces, leading slashes,
+  /// and any duplicate bucket-name prefix. Returns the bare object path (e.g. "file.jpg"),
+  /// OR the full URL if already a URL, OR empty string if invalid.
+  String _cleanStoragePath(String? storagePath) {
+    if (storagePath == null) return '';
+    var p = storagePath.trim();
+    if (p.isEmpty) return '';
+
+    // Already a full URL – return as-is
+    if (p.startsWith('http://') || p.startsWith('https://')) return p;
+
+    // Strip wrapping quotes and stray brackets
+    p = p.replaceAll('"', '').replaceAll("'", '').replaceAll('[', '').replaceAll(']', '').trim();
+
+    // Strip leading slashes
+    while (p.startsWith('/')) { p = p.substring(1).trim(); }
+
+    // Strip duplicate bucket prefix e.g. "property-images/file.jpg"
+    if (p.startsWith('$_storageBucket/')) {
+      p = p.substring(_storageBucket.length + 1).trim();
+    } else if (p.startsWith('public/$_storageBucket/')) {
+      p = p.substring('public/$_storageBucket/'.length).trim();
     }
-    return _supabase.storage
-        .from(_storageBucket)
-        .getPublicUrl(storagePath);
+
+    while (p.startsWith('/')) { p = p.substring(1).trim(); }
+    return p;
+  }
+
+  /// Returns a synchronous public URL for a given storage path.
+  /// NOTE: This only works if the bucket is set to PUBLIC in Supabase Dashboard.
+  /// If the bucket is private, the returned URL will receive a 400 error.
+  /// Use [getSignedImageUrl] for private buckets.
+  String getImageUrl(String? storagePath) {
+    final clean = _cleanStoragePath(storagePath);
+    if (clean.isEmpty) return '';
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+    try {
+      final url = _supabase.storage.from(_storageBucket).getPublicUrl(clean);
+      debugPrint('[PS] getImageUrl: path="$storagePath" → clean="$clean" → url="$url"');
+      return url;
+    } catch (e) {
+      debugPrint('[PS] getImageUrl ERROR for "$storagePath": $e');
+      return '';
+    }
+  }
+
+  /// Returns a signed (authenticated) URL for a given storage path.
+  /// Works for both public and private buckets.
+  /// [expiresIn] defaults to 1 hour (3600 seconds).
+  Future<String> getSignedImageUrl(String? storagePath, {int expiresIn = 3600}) async {
+    final clean = _cleanStoragePath(storagePath);
+    debugPrint('[PS] getSignedImageUrl: raw="$storagePath" clean="$clean"');
+    if (clean.isEmpty) return '';
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+    try {
+      final url = await _supabase.storage
+          .from(_storageBucket)
+          .createSignedUrl(clean, expiresIn);
+      debugPrint('[PS] getSignedImageUrl: signed url="$url"');
+      return url;
+    } catch (e) {
+      debugPrint('[PS] getSignedImageUrl ERROR for "$storagePath" (clean="$clean"): $e');
+      return '';
+    }
   }
 
   String _mimeType(String ext) {

@@ -6,9 +6,13 @@ import 'package:provider/provider.dart';
 import '../models/property.dart';
 import '../services/property_service.dart';
 import '../utils/theme.dart';
+import 'full_screen_image_viewer.dart';
 
 /// Premium property card matching the existing CRM card design system.
-class PropertyCard extends StatelessWidget {
+///
+/// Uses [FutureBuilder] + [PropertyService.getSignedImageUrl] to load images
+/// from a Supabase Storage bucket (works for both public and private buckets).
+class PropertyCard extends StatefulWidget {
   const PropertyCard({
     super.key,
     required this.property,
@@ -16,6 +20,7 @@ class PropertyCard extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onShare,
+    required this.onDelete,
   });
 
   final Property property;
@@ -23,10 +28,34 @@ class PropertyCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onShare;
+  final VoidCallback onDelete;
+
+  @override
+  State<PropertyCard> createState() => _PropertyCardState();
+}
+
+class _PropertyCardState extends State<PropertyCard> {
+  late final Future<String> _imageUrlFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final service = context.read<PropertyService>();
+    final firstPath = widget.property.imagePaths.isNotEmpty
+        ? widget.property.imagePaths.first
+        : null;
+    debugPrint(
+        '[PropertyCard] "${widget.property.projectName}" imagePaths=${widget.property.imagePaths}, firstPath=$firstPath');
+    if (firstPath != null && firstPath.isNotEmpty) {
+      _imageUrlFuture = service.getSignedImageUrl(firstPath);
+    } else {
+      _imageUrlFuture = Future.value('');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final service = context.read<PropertyService>();
+    final property = widget.property;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -41,31 +70,56 @@ class PropertyCard extends StatelessWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           child: InkWell(
-            onTap: onTap,
+            onTap: widget.onTap,
             borderRadius: BorderRadius.circular(AppRadius.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Image / Thumbnail ──
-                if (property.imagePaths.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppRadius.lg)),
-                    child: Image.network(
-                      service.getImageUrl(property.imagePaths.first),
-                      height: 160,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _placeholderImage(),
-                    ),
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(AppRadius.lg)),
+                  child: FutureBuilder<String>(
+                    future: _imageUrlFuture,
+                    builder: (ctx, snapshot) {
+                      final url = snapshot.data ?? '';
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return _loadingImage();
+                      }
+                      if (url.isEmpty) {
+                        debugPrint(
+                            '[PropertyCard] "${property.projectName}": empty URL → showing placeholder');
+                        return _placeholderImage();
+                      }
+                      debugPrint(
+                          '[PropertyCard] "${property.projectName}": loading image from $url');
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FullScreenImageViewer(
+                                property: property,
+                                initialIndex: 0,
+                              ),
+                            ),
+                          );
+                        },
+                        child: Image.network(
+                          url,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, error, __) {
+                            debugPrint(
+                                '[PropertyCard] "${property.projectName}": Image.network ERROR: $error  url=$url');
+                            return _placeholderImage();
+                          },
+                        ),
+                      );
+                    },
                   ),
-                ] else ...[
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppRadius.lg)),
-                    child: _placeholderImage(),
-                  ),
-                ],
+                ),
 
                 // ── Card Content ──
                 Padding(
@@ -73,7 +127,7 @@ class PropertyCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Project name + Availability badge
+                      // Project name + Availability badge + 3-dot menu
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -90,6 +144,48 @@ class PropertyCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           _availabilityBadge(property.availability),
+                          const SizedBox(width: 4),
+                          PopupMenuButton<String>(
+                            icon: Icon(Icons.more_vert_rounded, color: AppColors.textSecondary, size: 20),
+                            padding: EdgeInsets.zero,
+                            onSelected: (value) {
+                              if (value == 'view') widget.onTap();
+                              if (value == 'edit') widget.onEdit();
+                              if (value == 'delete') widget.onDelete();
+                            },
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'view',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.visibility_rounded, size: 18, color: AppColors.textSecondary),
+                                    const SizedBox(width: 8),
+                                    Text('View', style: GoogleFonts.poppins(fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_rounded, size: 18, color: AppColors.textSecondary),
+                                    const SizedBox(width: 8),
+                                    Text('Edit', style: GoogleFonts.poppins(fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_rounded, size: 18, color: AppColors.statusRed),
+                                    const SizedBox(width: 8),
+                                    Text('Delete', style: GoogleFonts.poppins(fontSize: 13, color: AppColors.statusRed)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -146,19 +242,19 @@ class PropertyCard extends StatelessWidget {
                           _actionButton(
                             icon: Icons.visibility_rounded,
                             label: 'View',
-                            onTap: onTap,
+                            onTap: widget.onTap,
                           ),
                           const SizedBox(width: AppSpacing.sm),
                           _actionButton(
                             icon: Icons.edit_rounded,
                             label: 'Edit',
-                            onTap: onEdit,
+                            onTap: widget.onEdit,
                           ),
                           const SizedBox(width: AppSpacing.sm),
                           _actionButton(
                             icon: Icons.share_rounded,
                             label: 'Share',
-                            onTap: onShare,
+                            onTap: widget.onShare,
                           ),
                         ],
                       ),
@@ -171,8 +267,27 @@ class PropertyCard extends StatelessWidget {
         ),
       )
           .animate()
-          .fadeIn(delay: Duration(milliseconds: index * 60), duration: 350.ms)
+          .fadeIn(
+              delay: Duration(milliseconds: widget.index * 60), duration: 350.ms)
           .slideY(begin: 0.04, curve: Curves.easeOut),
+    );
+  }
+
+  Widget _loadingImage() {
+    return Container(
+      height: 120,
+      width: double.infinity,
+      color: AppColors.surfaceVariant,
+      child: Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: AppColors.primary.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
     );
   }
 

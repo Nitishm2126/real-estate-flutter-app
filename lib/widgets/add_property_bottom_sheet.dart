@@ -509,13 +509,16 @@ class _AddPropertyBottomSheetState extends State<AddPropertyBottomSheet> {
                 ..._existingImagePaths.asMap().entries.map((entry) {
                   final path = entry.value;
                   final service = context.read<PropertyService>();
+                  final url = service.getImageUrl(path);
                   return _imageThumbnail(
-                    imageWidget: Image.network(
-                      service.getImageUrl(path),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          const Icon(Icons.broken_image_rounded),
-                    ),
+                    imageWidget: url.isNotEmpty
+                        ? Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.broken_image_rounded),
+                          )
+                        : const Icon(Icons.broken_image_rounded),
                     onRemove: () => _removeExistingImage(path),
                   );
                 }),

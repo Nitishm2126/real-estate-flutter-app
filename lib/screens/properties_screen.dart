@@ -48,6 +48,56 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
     );
   }
 
+  Future<void> _confirmDelete(Property property) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md)),
+        title: Text('Delete Property?',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+        content: Text(
+          'This will permanently delete "${property.projectName}" and all associated images from storage. This cannot be undone.',
+          style: GoogleFonts.poppins(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.statusRed,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.sm)),
+            ),
+            child: Text('Delete',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await context.read<PropertyService>().deleteProperty(property);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(_snackBar('Property deleted.'));
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              _snackBar('Failed to delete property. Try again.', isError: true));
+        }
+      }
+    }
+  }
+
   String _buildShareText(Property property) {
     final buffer = StringBuffer();
     buffer.writeln('🏘 *${property.projectName}*');
@@ -373,6 +423,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                           ),
                           onEdit: () => _openAddSheet(existing: p),
                           onShare: () => _shareProperty(p),
+                          onDelete: () => _confirmDelete(p),
                         );
                       },
                     ),
