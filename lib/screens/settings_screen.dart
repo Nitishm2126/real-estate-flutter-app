@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../screens/more_screen.dart';
 import '../services/customer_service.dart';
 import '../services/theme_service.dart';
 import '../utils/constants.dart';
@@ -96,6 +97,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               onTap: () {},
+            ),
+            const Divider(),
+            _actionTile(
+              icon: Icons.more_horiz_rounded,
+              title: 'More Options',
+              subtitle: 'Properties, Reports, Help & Support',
+              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const MoreScreen()));
+              },
             ),
           ]),
 

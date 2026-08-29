@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
+import '../screens/more_screen.dart';
 import '../screens/settings_screen.dart';
 
 class ProfileMenuButton extends StatelessWidget {
@@ -131,6 +132,13 @@ class ProfileMenuButton extends StatelessWidget {
           },
           leadingIcon: Icon(Icons.settings_outlined, color: AppColors.textPrimary, size: 20),
           child: Text('Settings', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
+        ),
+        MenuItemButton(
+          onPressed: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const MoreScreen()));
+          },
+          leadingIcon: Icon(Icons.more_horiz_rounded, color: AppColors.textPrimary, size: 20),
+          child: Text('More Options', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
         ),
         MenuItemButton(
           onPressed: () {

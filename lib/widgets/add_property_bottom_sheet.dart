@@ -207,11 +207,16 @@ class _AddPropertyBottomSheetState extends State<AddPropertyBottomSheet> {
       if (_isEditMode) {
         await service.updateProperty(
           property,
+          newImages: _newLocalImages,
           newLocalImagePaths: localPaths,
           removedStoragePaths: _removedStoragePaths,
         );
       } else {
-        await service.addProperty(property, localImagePaths: localPaths);
+        await service.addProperty(
+          property,
+          newImages: _newLocalImages,
+          localImagePaths: localPaths,
+        );
       }
 
       if (!mounted) return;
@@ -221,7 +226,7 @@ class _AddPropertyBottomSheetState extends State<AddPropertyBottomSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      _showSnackBar('Failed to save property. Please try again.', isError: true);
+      _showSnackBar('Failed to save property: ${e.toString().replaceAll('PostgrestException', '').replaceAll('Exception:', '').trim()}', isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -468,7 +473,7 @@ class _AddPropertyBottomSheetState extends State<AddPropertyBottomSheet> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<PropertyAvailability>(
-        value: _availability,
+        initialValue: _availability,
         style: GoogleFonts.poppins(fontSize: 14, color: AppColors.textPrimary),
         dropdownColor: AppColors.surface,
         decoration: InputDecoration(

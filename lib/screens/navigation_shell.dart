@@ -7,6 +7,7 @@ import '../screens/customers_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/follow_up_list_screen.dart';
 import '../screens/more_screen.dart';
+import '../screens/properties_screen.dart';
 import '../models/notification_item.dart';
 import '../screens/pdf_report_screen.dart';
 import '../screens/notifications_screen.dart';
@@ -76,7 +77,7 @@ class _NavigationShellState extends State<NavigationShell> {
       return;
     }
     
-    if (index == 6) {
+    if (index == 7) {
       // About MCP Avadi
       showAboutDialog(
         context: context,
@@ -129,6 +130,7 @@ class _NavigationShellState extends State<NavigationShell> {
         isInline: true,
       ),
       const MoreScreen(),
+      const PropertiesScreen(),
     ];
 
     // Safety check for index out of bounds when switching layouts
@@ -296,6 +298,7 @@ class _NavigationShellState extends State<NavigationShell> {
 
                 _sidebarItem(2, Icons.notifications_active_rounded, 'Follow-ups', showExtended),
                 _sidebarItem(3, Icons.notifications_none_rounded, 'Notifications', showExtended),
+                _sidebarItem(7, Icons.apartment_rounded, 'Properties', showExtended),
                 _sidebarItem(5, Icons.picture_as_pdf_rounded, 'Reports', showExtended),
                 _sidebarItem(4, Icons.settings_rounded, 'Settings', showExtended),
                 _sidebarItem(6, Icons.more_horiz_rounded, 'More', showExtended),

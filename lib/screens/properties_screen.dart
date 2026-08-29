@@ -25,6 +25,14 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PropertyService>().initialize();
+    });
+  }
+
+  @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
@@ -36,10 +44,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
-      builder: (_) => ChangeNotifierProvider.value(
-        value: context.read<PropertyService>(),
-        child: AddPropertyBottomSheet(existingProperty: existing),
-      ),
+      builder: (_) => AddPropertyBottomSheet(existingProperty: existing),
     );
   }
 
@@ -363,10 +368,7 @@ class _PropertiesScreenState extends State<PropertiesScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ChangeNotifierProvider.value(
-                                value: service,
-                                child: PropertyDetailsScreen(property: p),
-                              ),
+                              builder: (_) => PropertyDetailsScreen(property: p),
                             ),
                           ),
                           onEdit: () => _openAddSheet(existing: p),

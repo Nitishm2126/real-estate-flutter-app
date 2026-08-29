@@ -127,27 +127,58 @@ class Property {
   // ── Supabase JSON mapping ─────────────────────────────────────
 
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
+    final map = <String, dynamic>{
       'project_name': projectName,
       'location': location,
-      'description': description,
-      'price_per_sqft': pricePerSqft,
-      'offer_price_per_sqft': offerPricePerSqft,
-      'plot_sizes': plotSizes,
-      'availability': availability.label,
       'image_paths': imagePaths,
-      'amenities': amenities,
-      'approval_type': approvalType,
-      'approval_number': approvalNumber,
-      'approval_authority': approvalAuthority,
-      'approval_notes': approvalNotes,
     };
+
+    if (description.trim().isNotEmpty) {
+      map['description'] = description.trim();
+    }
+    if (pricePerSqft != null) {
+      map['price_per_sqft'] = pricePerSqft;
+    }
+    if (offerPricePerSqft != null) {
+      map['offer_price_per_sqft'] = offerPricePerSqft;
+    }
+    if (plotSizes.isNotEmpty) {
+      map['plot_sizes'] = plotSizes;
+    }
+    if (availability != PropertyAvailability.available && availability.label.isNotEmpty) {
+      map['availability'] = availability.label;
+    }
+    if (amenities.isNotEmpty) {
+      map['amenities'] = amenities;
+    }
+    if (approvalType.trim().isNotEmpty) {
+      map['approval_type'] = approvalType.trim();
+    }
+    if (approvalNumber.trim().isNotEmpty) {
+      map['approval_number'] = approvalNumber.trim();
+    }
+    if (approvalAuthority.trim().isNotEmpty) {
+      map['approval_authority'] = approvalAuthority.trim();
+    }
+    if (approvalNotes.trim().isNotEmpty) {
+      map['approval_notes'] = approvalNotes.trim();
+    }
+
+    return map;
   }
 
   factory Property.fromJson(Map<String, dynamic> json) {
-    List<String> _parseStringList(dynamic val) {
+    List<String> parseStringList(dynamic val) {
       if (val == null) return [];
       if (val is List) return val.map((e) => e.toString()).toList();
+      if (val is String) {
+        final trimmed = val.trim();
+        if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+          final content = trimmed.substring(1, trimmed.length - 1).trim();
+          if (content.isEmpty) return [];
+          return content.split(',').map((e) => e.replaceAll('"', '').trim()).toList();
+        }
+      }
       return [];
     }
 
@@ -158,15 +189,17 @@ class Property {
       description: json['description'] as String? ?? '',
       pricePerSqft: (json['price_per_sqft'] as num?)?.toDouble(),
       offerPricePerSqft: (json['offer_price_per_sqft'] as num?)?.toDouble(),
-      plotSizes: _parseStringList(json['plot_sizes']),
+      plotSizes: parseStringList(json['plot_sizes']),
       availability: PropertyAvailabilityX.fromLabel(
           json['availability'] as String? ?? 'Available'),
-      imagePaths: _parseStringList(json['image_paths']),
-      amenities: _parseStringList(json['amenities']),
+      imagePaths: parseStringList(json['image_paths']),
+      amenities: parseStringList(json['amenities']),
       approvalType: json['approval_type'] as String? ?? '',
       approvalNumber: json['approval_number'] as String? ?? '',
       approvalAuthority: json['approval_authority'] as String? ?? '',
-      approvalNotes: json['approval_notes'] as String? ?? '',
+      approvalNotes: (json['approval_notes'] as String?) ??
+          (json['approval_details'] as String?) ??
+          '',
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,

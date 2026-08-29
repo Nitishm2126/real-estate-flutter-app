@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'screens/navigation_shell.dart';
 import 'services/customer_service.dart';
+import 'services/property_service.dart';
 import 'services/theme_service.dart';
 import 'utils/constants.dart';
 import 'utils/theme.dart';
@@ -29,6 +30,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CustomerService()),
+        ChangeNotifierProvider(create: (_) => PropertyService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
       ],
       child: const McpAvadiApp(),
