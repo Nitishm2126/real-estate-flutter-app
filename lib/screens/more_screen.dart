@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../screens/follow_up_list_screen.dart';
 import '../screens/pdf_report_screen.dart';
-import '../screens/properties_screen.dart';
+
 import '../services/customer_service.dart';
 import '../utils/theme.dart';
 
@@ -63,22 +63,6 @@ class MoreScreen extends StatelessWidget {
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          _optionCard(
-            context,
-            icon: Icons.apartment_rounded,
-            color: AppColors.primary,
-            title: 'Properties & Projects',
-            description: 'Manage property listings, sizes, pricing and availability.',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const PropertiesScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
           _optionCard(
             context,
             icon: Icons.notifications_active_rounded,

@@ -77,7 +77,7 @@ class _NavigationShellState extends State<NavigationShell> {
       return;
     }
     
-    if (index == 7) {
+    if (index == 8) {
       // About MCP Avadi
       showAboutDialog(
         context: context,
@@ -134,7 +134,7 @@ class _NavigationShellState extends State<NavigationShell> {
     ];
 
     // Safety check for index out of bounds when switching layouts
-    if (!isDesktop && _selectedIndex > 6) {
+    if (!isDesktop && _selectedIndex > 7) {
       _selectedIndex = 0;
     }
 
