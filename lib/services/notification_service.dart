@@ -8,16 +8,15 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../models/follow_up.dart';
 import '../models/customer.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint('[FCM] Handling a background message: ${message.messageId}');
-}
 
 /// Singleton service that wraps [FlutterLocalNotificationsPlugin].
+///
+/// Handles:
+///   - Local notification initialization & channel creation
+///   - Timezone configuration (Asia/Kolkata)
+///   - Exact follow-up alarm scheduling via [zonedSchedule]
+///   - Notification permission requests (POST_NOTIFICATIONS + exact alarms)
+///   - Tap handling & deep-link routing via [selectNotificationStream]
 ///
 /// Debug log prefix: [NS]
 class NotificationService {
@@ -58,9 +57,9 @@ class NotificationService {
     }
 
     // Step 2: Android initialization settings
-    //   '@mipmap/launcher_icon' matches the app's launcher icon defined in the manifest.
+    //   '@drawable/ic_notification' is a monochrome vector for the status bar.
     const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
+        AndroidInitializationSettings('@drawable/ic_notification');
 
     const InitializationSettings initSettings =
         InitializationSettings(android: androidSettings);
@@ -78,29 +77,6 @@ class NotificationService {
       onDidReceiveBackgroundNotificationResponse:
           _onBackgroundNotificationResponse,
     );
-
-    // Step 4: Setup Firebase Messaging (FCM)
-    if (!kIsWeb && Platform.isAndroid) {
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      
-      // Handle foreground FCM messages
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('[FCM] Foreground message received: ${message.messageId}');
-        
-        // Show local notification using flutter_local_notifications to make it visible
-        if (message.notification != null) {
-          _showFcmAsLocalNotification(message);
-        }
-      });
-      
-      // Handle when user taps FCM notification in background
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('[FCM] Notification tapped in background: ${message.messageId}');
-        if (message.data.containsKey('customer_id')) {
-          selectNotificationStream.add(message.data['customer_id']);
-        }
-      });
-    }
 
     // Step 4: Ensure notification channel exists on Android 8+
     if (!kIsWeb && Platform.isAndroid) {
@@ -145,7 +121,7 @@ class NotificationService {
     );
 
     await androidPlugin.createNotificationChannel(channel);
-    debugPrint('[NOTIFICATION] Channel: CREATED');
+    debugPrint('[NS] Notification channel "$_channelId" created (Importance.high).');
   }
 
   // ─── Timezone ─────────────────────────────────────────────────────
@@ -181,7 +157,7 @@ class NotificationService {
       // Request POST_NOTIFICATIONS permission (Android 13+)
       final bool? notifGranted =
           await androidPlugin.requestNotificationsPermission();
-      debugPrint('[NOTIFICATION] Permission: ${notifGranted == true ? "GRANTED" : "DENIED"}');
+      debugPrint('[NS] POST_NOTIFICATIONS: ${notifGranted == true ? "GRANTED" : "DENIED"}');
       if (notifGranted == false) {
         isGranted = false;
       }
@@ -189,14 +165,14 @@ class NotificationService {
       // Check exact alarm permission status
       final bool? canScheduleExact =
           await androidPlugin.canScheduleExactNotifications();
-      debugPrint('[NOTIFICATION] Exact alarm: ${canScheduleExact == true ? "AVAILABLE" : "UNAVAILABLE"}');
+      debugPrint('[NS] Exact alarm: ${canScheduleExact == true ? "AVAILABLE" : "UNAVAILABLE"}');
 
       if (canScheduleExact == false) {
-        debugPrint('[NOTIFICATION] Exact alarm not available – requesting SCHEDULE_EXACT_ALARM...');
+        debugPrint('[NS] Requesting SCHEDULE_EXACT_ALARM...');
         await androidPlugin.requestExactAlarmsPermission();
         final bool? recheck =
             await androidPlugin.canScheduleExactNotifications();
-        debugPrint('[NOTIFICATION] Exact alarm after request: $recheck');
+        debugPrint('[NS] Exact alarm after request: $recheck');
         if (recheck == false) {
           isGranted = false;
         }
@@ -221,17 +197,6 @@ class NotificationService {
       Future.delayed(const Duration(milliseconds: 500), () {
         selectNotificationStream.add(details.notificationResponse!.payload);
       });
-      return; // If launched by local, don't double process
-    }
-    
-    // Check FCM Notification Launch (Terminated state)
-    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null && initialMessage.data.containsKey('customer_id')) {
-      debugPrint(
-          '[NS] App launched from FCM notification: customer_id=${initialMessage.data['customer_id']}');
-      Future.delayed(const Duration(milliseconds: 500), () {
-        selectNotificationStream.add(initialMessage.data['customer_id']);
-      });
     }
   }
 
@@ -244,39 +209,6 @@ class NotificationService {
     // Use first 7 hex chars → max value 0xFFFFFFF (268,435,455) which fits in 32-bit
     final hexStr = cleanUuid.substring(0, 7);
     return int.parse(hexStr, radix: 16);
-  }
-
-  // ─── FCM Local Display ────────────────────────────────────────────
-
-  Future<void> _showFcmAsLocalNotification(RemoteMessage message) async {
-    final notification = message.notification;
-    if (notification == null) return;
-    
-    int id = message.hashCode;
-    if (message.data.containsKey('follow_up_id')) {
-      id = _generateNotificationId(message.data['follow_up_id']);
-    }
-
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDesc,
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/launcher_icon',
-      enableVibration: true,
-      playSound: true,
-    );
-
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-
-    await _plugin.show(
-      id,
-      notification.title,
-      notification.body,
-      notificationDetails,
-      payload: message.data['customer_id'],
-    );
   }
 
   // ─── Scheduling ───────────────────────────────────────────────────
@@ -294,7 +226,7 @@ class NotificationService {
 
     final bool permissionsGranted = await requestPermissions();
     if (!permissionsGranted) {
-      debugPrint('[NOTIFICATION] Cannot schedule native notification: permissions denied.');
+      debugPrint('[NS] Cannot schedule native notification: permissions denied.');
       return;
     }
 
@@ -317,7 +249,7 @@ class NotificationService {
     await cancelNotification(followUp.id!);
 
     // Parse time string (supports "HH:mm", "H:mm AM/PM", "h:mm a" formats)
-    final DateTime? scheduleDate =
+    final tz.TZDateTime? scheduleDate =
         parseScheduleDateTime(followUp.followUpDate, followUp.followUpTime!);
 
     if (scheduleDate == null) {
@@ -326,7 +258,7 @@ class NotificationService {
       return;
     }
 
-    final DateTime now = DateTime.now();
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     if (!scheduleDate.isAfter(now)) {
       debugPrint(
           '[NS] scheduleFollowUpNotification: scheduled time $scheduleDate is in the past – skip.');
@@ -343,7 +275,7 @@ class NotificationService {
       channelDescription: _channelDesc,
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@mipmap/launcher_icon',
+      icon: '@drawable/ic_notification',
       enableVibration: true,
       playSound: true,
       // Show the notification even when the screen is off / DND
@@ -355,9 +287,11 @@ class NotificationService {
 
     final String body = _buildNotificationBody(customer, followUp);
 
-    debugPrint('[NOTIFICATION] Notification ID: $notificationId');
-    debugPrint('[NOTIFICATION] Scheduled DateTime: $scheduleDate');
-    debugPrint('[NOTIFICATION] Timezone: ${tz.local.name}');
+    debugPrint('[NS] Notification ID: $notificationId');
+    debugPrint('[NS] Requested Date: ${followUp.followUpDate}, Requested Time: ${followUp.followUpTime}');
+    debugPrint('[NS] Scheduled TZDateTime: $scheduleDate');
+    debugPrint('[NS] Current TZDateTime: $now');
+    debugPrint('[NS] Timezone: ${tz.local.name}');
 
     // ── Exact reminder at the follow-up time ──
     await _scheduleExact(
@@ -370,7 +304,7 @@ class NotificationService {
     );
 
     // ── 30-min early warning ──
-    final DateTime earlyDate = scheduleDate.subtract(const Duration(minutes: 30));
+    final tz.TZDateTime earlyDate = scheduleDate.subtract(const Duration(minutes: 30));
     if (earlyDate.isAfter(now)) {
       final String earlyBody =
           'Upcoming follow-up in 30 minutes with ${customer.customerName}';
@@ -385,32 +319,34 @@ class NotificationService {
         payload: customer.id ?? '',
       );
     }
+
+    // Verify scheduling by listing pending notifications
+    await debugPendingNotifications();
   }
 
   Future<void> _scheduleExact({
     required int id,
     required String title,
     required String body,
-    required DateTime scheduledDate,
+    required tz.TZDateTime scheduledDate,
     required NotificationDetails notificationDetails,
     required String payload,
   }) async {
     try {
-      final tz.TZDateTime tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
-
       await _plugin.zonedSchedule(
         id: id,
         title: title,
         body: body,
-        scheduledDate: tzDate,
+        scheduledDate: scheduledDate,
         notificationDetails: notificationDetails,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: payload,
       );
 
-      debugPrint('[NOTIFICATION] Native schedule: SUCCESS');
-    } catch (e) {
-      debugPrint('[NOTIFICATION] Failed to schedule native notification: $e');
+      debugPrint('[NOTIFY] FOLLOW-UP NOTIFICATION SCHEDULED SUCCESSFULLY (id=$id, at=$scheduledDate)');
+    } catch (e, stack) {
+      debugPrint('[NS] Failed to schedule native notification: $e');
+      debugPrint('[NS] StackTrace: $stack');
     }
   }
 
@@ -442,8 +378,8 @@ class NotificationService {
   // ─── Helpers ──────────────────────────────────────────────────────
 
   /// Parses a time string like "10:30", "10:30 AM", "2:30 PM" and combines
-  /// with [date] to produce a [DateTime].
-  DateTime? parseScheduleDateTime(DateTime date, String timeStr) {
+  /// with [date] to produce a [tz.TZDateTime] in Asia/Kolkata natively.
+  tz.TZDateTime? parseScheduleDateTime(DateTime date, String timeStr) {
     try {
       final String cleaned = timeStr.trim();
       // Split on colon and/or whitespace (handles "HH:mm", "H:mm AM", "H:mm PM")
@@ -459,7 +395,9 @@ class NotificationService {
         if (ampm == 'AM' && hour == 12) hour = 0;
       }
 
-      return DateTime(
+      // Directly build TZDateTime using tz.local (Asia/Kolkata) to avoid device timezone bias.
+      return tz.TZDateTime(
+        tz.local,
         date.year,
         date.month,
         date.day,
@@ -474,10 +412,25 @@ class NotificationService {
 
   /// Builds the notification body text.
   String _buildNotificationBody(Customer customer, FollowUp followUp) {
-    return 'Follow-up with ${customer.phoneNumber} is due now.';
+    return 'Follow-up with ${customer.customerName} (${customer.phoneNumber}) is due now.';
   }
 
   // ─── Debug / Test ──────────────────────────────────────────────────
+
+  /// Inspect currently pending notifications scheduled in the OS.
+  Future<void> debugPendingNotifications() async {
+    if (kIsWeb) return;
+    try {
+      final List<PendingNotificationRequest> pending = await _plugin.pendingNotificationRequests();
+      debugPrint('[NS] --- PENDING NOTIFICATIONS (${pending.length}) ---');
+      for (var req in pending) {
+        debugPrint('[NS]  - ID: ${req.id}, Title: ${req.title}, Body: ${req.body}');
+      }
+      debugPrint('[NS] ----------------------------------');
+    } catch (e) {
+      debugPrint('[NS] Error fetching pending notifications: $e');
+    }
+  }
 
   /// A safe DEBUG-only method to trigger an immediate test notification.
   /// Used solely to determine if basic Android native notification delivery works
@@ -493,7 +446,7 @@ class NotificationService {
       channelDescription: _channelDesc,
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@mipmap/launcher_icon',
+      icon: '@drawable/ic_notification',
       enableVibration: true,
       playSound: true,
     );

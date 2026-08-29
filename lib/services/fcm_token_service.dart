@@ -31,6 +31,10 @@ class FcmTokenService {
       // Get initial token
       String? token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
+        debugPrint('\n=============================================');
+        debugPrint('[FCM] DEVICE TOKEN FOR FIREBASE CONSOLE:');
+        debugPrint(token);
+        debugPrint('=============================================\n');
         await _saveTokenToSupabase(token);
       }
 

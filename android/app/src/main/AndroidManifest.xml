@@ -3,10 +3,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <!-- POST_NOTIFICATIONS: required on Android 13+ (API 33+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- SCHEDULE_EXACT_ALARM: for Android 12 (API 31-32), allows exact alarms -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
-    <!-- USE_EXACT_ALARM: for Android 13+ (API 33+), no manual user grant required -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- SCHEDULE_EXACT_ALARM: required for exact local alarms -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- READ_CONTACTS: required to pick phone number from device contacts on Android -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
@@ -46,6 +44,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Set default FCM notification channel and icon for background messages -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="mcp_avadi_followup_reminders" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
             
         <!-- ScheduledNotificationReceiver: fires the actual alarm on schedule (background/killed app) -->
         <receiver

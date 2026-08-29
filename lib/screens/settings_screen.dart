@@ -1,10 +1,13 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../screens/more_screen.dart';
 import '../services/customer_service.dart';
+import '../services/fcm_service.dart';
+import '../services/notification_service.dart';
 import '../services/theme_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
@@ -232,6 +235,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ]),
 
           const SizedBox(height: AppSpacing.lg),
+
+          // ── NOTIFICATION DEBUG SECTION (debug builds only) ─────────
+          if (kDebugMode) ...[
+            _sectionHeader('NOTIFICATION DIAGNOSTICS'),
+            _card([
+              _infoTile(
+                icon: Icons.cloud_rounded,
+                title: 'FCM Status',
+                content: FcmService().currentToken != null
+                    ? 'Enabled – Token Registered'
+                    : 'Token Not Available',
+              ),
+              const Divider(),
+              _infoTile(
+                icon: Icons.key_rounded,
+                title: 'FCM Token',
+                content: FcmService().currentToken ?? 'Not retrieved yet',
+              ),
+              const Divider(),
+              _infoTile(
+                icon: Icons.verified_user_rounded,
+                title: 'Permission Status',
+                content: FcmService().permissionStatus ?? 'Unknown',
+              ),
+              const Divider(),
+              _infoTile(
+                icon: Icons.notifications_rounded,
+                title: 'Last FCM Notification',
+                content: FcmService().lastNotificationTitle != null
+                    ? '${FcmService().lastNotificationTitle}\n${FcmService().lastNotificationBody ?? ""}\n${FcmService().lastNotificationTime?.toString() ?? ""}'
+                    : 'None received yet',
+              ),
+              const Divider(),
+              _actionTile(
+                icon: Icons.bug_report_rounded,
+                title: 'Send Test Notification',
+                subtitle: 'Trigger a local test notification now',
+                onTap: () async {
+                  await NotificationService().showTestNotification();
+                  _showSnackBar('Test notification sent');
+                },
+              ),
+              const Divider(),
+              _actionTile(
+                icon: Icons.pending_actions_rounded,
+                title: 'Log Pending Notifications',
+                subtitle: 'Print all scheduled alarms to console',
+                onTap: () async {
+                  await NotificationService().debugPendingNotifications();
+                  _showSnackBar('Check debug console for pending notifications');
+                },
+              ),
+            ]),
+            const SizedBox(height: AppSpacing.lg),
+          ],
 
           // ── ABOUT SECTION ────────────────────────────────────────
           _sectionHeader('ABOUT'),
