@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +13,7 @@ import '../screens/pdf_report_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/settings_screen.dart';
 import '../services/customer_service.dart';
-import '../services/theme_service.dart';
+
 import '../utils/constants.dart';
 import '../utils/theme.dart';
 import '../widgets/add_customer_bottom_sheet.dart';
@@ -43,32 +43,49 @@ class _NavigationShellState extends State<NavigationShell> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
+    _pageController.addListener(_onScroll);
     _navScrollController = ScrollController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _updatePillPosition();
+      if (mounted) _onScroll();
     });
   }
 
   @override
   void dispose() {
+    _pageController.removeListener(_onScroll);
     _pageController.dispose();
     _navScrollController.dispose();
     super.dispose();
   }
 
-  void _updatePillPosition() {
-    if (_selectedIndex >= 0 && _selectedIndex < _navKeys.length) {
-      final keyContext = _navKeys[_selectedIndex].currentContext;
+  void _onScroll() {
+    if (!_pageController.hasClients || _navKeys.isEmpty || _rowKey.currentContext == null) return;
+    
+    final page = _pageController.page ?? _selectedIndex.toDouble();
+    final lowerIndex = page.floor();
+    final upperIndex = page.ceil();
+    final fraction = page - lowerIndex;
+
+    if (lowerIndex >= 0 && upperIndex < _navKeys.length) {
+      final lowerContext = _navKeys[lowerIndex].currentContext;
+      final upperContext = _navKeys[upperIndex].currentContext;
       final rowContext = _rowKey.currentContext;
-      if (keyContext != null && rowContext != null) {
-        final RenderBox renderBox = keyContext.findRenderObject() as RenderBox;
-        final RenderBox rowRenderBox = rowContext.findRenderObject() as RenderBox;
-        final offset = renderBox.localToGlobal(Offset.zero, ancestor: rowRenderBox);
+
+      if (lowerContext != null && upperContext != null && rowContext != null) {
+        final RenderBox lowerBox = lowerContext.findRenderObject() as RenderBox;
+        final RenderBox upperBox = upperContext.findRenderObject() as RenderBox;
+        final RenderBox rowBox = rowContext.findRenderObject() as RenderBox;
+
+        final lowerOffset = lowerBox.localToGlobal(Offset.zero, ancestor: rowBox).dx;
+        final upperOffset = upperBox.localToGlobal(Offset.zero, ancestor: rowBox).dx;
         
-        if (_pillPosition != offset.dx || _pillWidth != renderBox.size.width) {
+        final currentPosition = lowerOffset + (upperOffset - lowerOffset) * fraction;
+        final currentWidth = lowerBox.size.width + (upperBox.size.width - lowerBox.size.width) * fraction;
+
+        if ((_pillPosition - currentPosition).abs() > 0.5 || (_pillWidth - currentWidth).abs() > 0.5) {
           setState(() {
-            _pillPosition = offset.dx;
-            _pillWidth = renderBox.size.width;
+            _pillPosition = currentPosition;
+            _pillWidth = currentWidth;
           });
         }
       }
@@ -82,7 +99,6 @@ class _NavigationShellState extends State<NavigationShell> {
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && index < 5) {
-          _updatePillPosition();
           _scrollToNavIndex(index);
         }
       });
@@ -103,7 +119,6 @@ class _NavigationShellState extends State<NavigationShell> {
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && index < 5) {
-          _updatePillPosition();
           _scrollToNavIndex(index);
         }
       });
@@ -230,7 +245,7 @@ class _NavigationShellState extends State<NavigationShell> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _selectedIndex < 5) _updatePillPosition();
+      if (mounted && _selectedIndex < 5) _onScroll();
     });
 
     if (isDesktop) {
@@ -516,19 +531,10 @@ class _NavigationShellState extends State<NavigationShell> {
     );
   }
 
-  // â”€â”€â”€ Premium Glassmorphism Bottom Navigation Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€â”€ Premium Liquid Glass Bottom Navigation Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildBottomNavigationBar(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final themeService = context.watch<ThemeService>();
     
-    // Glassmorphism styling based on theme
-    final baseGlassColor = isDark ? const Color(0xFF111A15) : Colors.white;
-    final glassColor = baseGlassColor.withValues(alpha: themeService.glassOpacity);
-        
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: themeService.glassBorder)
-        : Colors.black.withValues(alpha: themeService.glassBorder);
-
     return SafeArea(
       bottom: true,
       child: Column(
@@ -549,54 +555,55 @@ class _NavigationShellState extends State<NavigationShell> {
             ),
           ),
           const SizedBox(height: 12),
-          // Glass Navigation
+          // Liquid Glass Navigation
           Container(
-            // Responsive margins
-            margin: const EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: 16,
+            margin: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 60,
+                  offset: const Offset(0, 30),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 15),
+                ),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 0), // Inner glow fake
+                ),
+              ],
             ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: themeService.glassEnabled 
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
-                      blurRadius: themeService.glassShadow * 3, // scale factor for blur radius
-                      offset: Offset(0, themeService.glassShadow),
-                    ),
-                  ] 
-                : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: themeService.glassEnabled
-                ? BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: themeService.glassBlur, sigmaY: themeService.glassBlur),
-                    child: _buildScrollableNavContent(glassColor, borderColor, isDark),
-                  )
-                : _buildScrollableNavContent(isDark ? AppColors.surface : Colors.white, isDark ? Colors.white12 : Colors.black12, isDark),
-          ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(32),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 35.0, sigmaY: 35.0),
+                child: _buildScrollableNavContent(isDark),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildScrollableNavContent(Color bgColor, Color bColor, bool isDark) {
+  Widget _buildScrollableNavContent(bool isDark) {
     return Container(
-      height: 66,
+      height: 70,
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: bColor, width: 1.0),
+        color: Colors.white.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(32),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.4), width: 1.0),
+          left: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
+          right: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -608,17 +615,33 @@ class _NavigationShellState extends State<NavigationShell> {
               constraints: BoxConstraints(minWidth: constraints.maxWidth),
               child: Stack(
                 children: [
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
+                  Positioned(
                     left: _pillPosition,
                     top: 8,
                     bottom: 8,
                     width: _pillWidth,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withValues(alpha: 0.25),
+                            AppColors.primary.withValues(alpha: 0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                     ),
                   ),
