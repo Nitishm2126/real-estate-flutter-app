@@ -571,12 +571,6 @@ class _NavigationShellState extends State<NavigationShell> {
                   blurRadius: 20,
                   offset: const Offset(0, 15),
                 ),
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 0), // Inner glow fake
-                ),
               ],
             ),
             child: ClipRRect(
@@ -596,7 +590,7 @@ class _NavigationShellState extends State<NavigationShell> {
     return Container(
       height: 70,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
+        color: AppColors.primary.withValues(alpha: 0.15), // Semi-transparent green-tinted glass surface
         borderRadius: BorderRadius.circular(32),
         border: Border(
           top: BorderSide(color: Colors.white.withValues(alpha: 0.4), width: 1.0),
@@ -605,49 +599,78 @@ class _NavigationShellState extends State<NavigationShell> {
           bottom: BorderSide(color: Colors.white.withValues(alpha: 0.2), width: 1.0),
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            controller: _navScrollController,
-            scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: _pillPosition,
-                    top: 8,
-                    bottom: 8,
-                    width: _pillWidth,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.primary.withValues(alpha: 0.25),
-                            AppColors.primary.withValues(alpha: 0.1),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
+      child: Stack(
+        children: [
+          // Subtle inner highlight / fake Fresnel
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(32),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: 0.15),
+                  Colors.transparent,
+                  Colors.white.withValues(alpha: 0.05),
+                ],
+                stops: const [0.0, 0.3, 1.0],
+              ),
+            ),
+          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                controller: _navScrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: _pillPosition,
+                        top: 8,
+                        bottom: 8,
+                        width: _pillWidth,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 20.0, sigmaY: 20.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    AppColors.primary.withValues(alpha: 0.4),
+                                    AppColors.primary.withValues(alpha: 0.15),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    blurRadius: 12,
+                                    spreadRadius: 2, // Inner glow
+                                  ),
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  Row(
-                    key: _rowKey,
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      Row(
+                        key: _rowKey,
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
                       _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
@@ -661,6 +684,8 @@ class _NavigationShellState extends State<NavigationShell> {
             ),
           );
         },
+      ),
+        ],
       ),
     );
   }

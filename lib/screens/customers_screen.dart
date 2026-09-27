@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -67,7 +68,8 @@ class CustomersScreen extends StatelessWidget {
                 SliverAppBar(
                   pinned: true,
                   floating: true,
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
                   expandedHeight: 175.0,
                   collapsedHeight: kToolbarHeight,
                   title: Text(
@@ -94,19 +96,34 @@ class CustomersScreen extends StatelessWidget {
                         ),
                       ),
                   ],
-                  flexibleSpace: FlexibleSpaceBar(
-                    collapseMode: CollapseMode.none,
-                    background: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(
-                          color: AppColors.background,
-                          width: double.infinity,
-                          padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.md, AppSpacing.md, AppSpacing.md, 8),
-                          child: const SearchFilterBar(),
+                  flexibleSpace: ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 25.0, sigmaY: 25.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.85),
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              width: 1.0,
+                            ),
+                          ),
                         ),
-                      ],
+                        child: FlexibleSpaceBar(
+                          collapseMode: CollapseMode.none,
+                          background: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.fromLTRB(
+                                    AppSpacing.md, AppSpacing.md, AppSpacing.md, 8),
+                                child: const SearchFilterBar(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
