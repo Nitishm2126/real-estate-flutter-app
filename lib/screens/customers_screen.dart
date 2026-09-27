@@ -47,32 +47,6 @@ class CustomersScreen extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          appBar: AppBar(
-            title: Text(
-              'Customers',
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                fontSize: 20,
-              ),
-            ),
-            actions: [
-              if (service.isSyncing)
-                Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: Center(
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
           body: RefreshIndicator(
             color: AppColors.primary,
             backgroundColor: AppColors.surface,
@@ -89,11 +63,52 @@ class CustomersScreen extends StatelessWidget {
                 parent: BouncingScrollPhysics(),
               ),
               slivers: [
-                // Search & Filter controls
-                const SliverPadding(
-                  padding: EdgeInsets.fromLTRB(
-                      AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
-                  sliver: SliverToBoxAdapter(child: SearchFilterBar()),
+                // Collapsible Green Header with Search
+                SliverAppBar(
+                  pinned: true,
+                  floating: true,
+                  backgroundColor: AppColors.primary,
+                  expandedHeight: 175.0,
+                  collapsedHeight: kToolbarHeight,
+                  title: Text(
+                    'Customers',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontSize: 20,
+                    ),
+                  ),
+                  actions: [
+                    if (service.isSyncing)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16.0),
+                        child: Center(
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                  flexibleSpace: FlexibleSpaceBar(
+                    collapseMode: CollapseMode.none,
+                    background: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          color: AppColors.background,
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.md, AppSpacing.md, AppSpacing.md, 8),
+                          child: const SearchFilterBar(),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
 
                 // Customer Count & status label
