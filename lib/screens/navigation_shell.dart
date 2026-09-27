@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +30,99 @@ class NavigationShell extends StatefulWidget {
 
 class _NavigationShellState extends State<NavigationShell> {
   int _selectedIndex = 0;
+  late final PageController _pageController;
+  late final ScrollController _navScrollController;
+  
+  final List<GlobalKey> _navKeys = List.generate(5, (_) => GlobalKey());
+  final GlobalKey _rowKey = GlobalKey();
+
+  double _pillPosition = 0;
+  double _pillWidth = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
+    _navScrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updatePillPosition();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _navScrollController.dispose();
+    super.dispose();
+  }
+
+  void _updatePillPosition() {
+    if (_selectedIndex >= 0 && _selectedIndex < _navKeys.length) {
+      final keyContext = _navKeys[_selectedIndex].currentContext;
+      final rowContext = _rowKey.currentContext;
+      if (keyContext != null && rowContext != null) {
+        final RenderBox renderBox = keyContext.findRenderObject() as RenderBox;
+        final RenderBox rowRenderBox = rowContext.findRenderObject() as RenderBox;
+        final offset = renderBox.localToGlobal(Offset.zero, ancestor: rowRenderBox);
+        
+        if (_pillPosition != offset.dx || _pillWidth != renderBox.size.width) {
+          setState(() {
+            _pillPosition = offset.dx;
+            _pillWidth = renderBox.size.width;
+          });
+        }
+      }
+    }
+  }
+
+  void _onPageChanged(int index) {
+    if (_selectedIndex != index) {
+      setState(() {
+        _selectedIndex = index;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && index < 5) {
+          _updatePillPosition();
+          _scrollToNavIndex(index);
+        }
+      });
+    }
+  }
+
+  void _onNavItemTapped(int index) {
+    if (_selectedIndex != index) {
+      setState(() {
+        _selectedIndex = index;
+      });
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && index < 5) {
+          _updatePillPosition();
+          _scrollToNavIndex(index);
+        }
+      });
+    }
+  }
+
+  void _scrollToNavIndex(int index) {
+    if (index >= 0 && index < _navKeys.length) {
+      final keyContext = _navKeys[index].currentContext;
+      if (keyContext != null) {
+        Scrollable.ensureVisible(
+          keyContext,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          alignment: 0.5,
+        );
+      }
+    }
+  }
 
   void _openAddCustomerForm() {
     final isDesktop = MediaQuery.of(context).size.width >= 768;
@@ -65,7 +158,7 @@ class _NavigationShellState extends State<NavigationShell> {
     
     if (index == 5) {
       // Profile maps to Settings
-      setState(() => _selectedIndex = 4);
+      _onNavItemTapped(4);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Profile details are managed in Settings.', style: GoogleFonts.poppins(fontSize: 13)),
@@ -101,9 +194,7 @@ class _NavigationShellState extends State<NavigationShell> {
       return;
     }
 
-    setState(() {
-      _selectedIndex = index;
-    });
+    _onNavItemTapped(index);
   }
 
   @override
@@ -138,6 +229,10 @@ class _NavigationShellState extends State<NavigationShell> {
       _selectedIndex = 0;
     }
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _selectedIndex < 5) _updatePillPosition();
+    });
+
     if (isDesktop) {
       return Scaffold(
         extendBody: true,
@@ -166,16 +261,17 @@ class _NavigationShellState extends State<NavigationShell> {
           selectedIndex: _selectedIndex,
           onItemSelected: _onDrawerItemSelected,
         ),
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: pages,
+        body: PageView(
+          controller: _pageController,
+          onPageChanged: _onPageChanged,
+          children: pages.map((page) => _KeepAlivePage(child: page)).toList(),
         ),
         bottomNavigationBar: _buildBottomNavigationBar(context),
       );
     }
   }
 
-  // ─── Desktop/Tablet Left Sidebar ────────────────────────────────
+  // â”€â”€â”€ Desktop/Tablet Left Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildSidebar(double screenWidth) {
     final showExtended = screenWidth >= 1024; // Show names if width is large
 
@@ -323,7 +419,7 @@ class _NavigationShellState extends State<NavigationShell> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
-        onTap: () => setState(() => _selectedIndex = index),
+        onTap: () => _onNavItemTapped(index),
         selected: isSelected,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -420,7 +516,7 @@ class _NavigationShellState extends State<NavigationShell> {
     );
   }
 
-  // ─── Premium Glassmorphism Bottom Navigation Bar ───────────────────────
+  // â”€â”€â”€ Premium Glassmorphism Bottom Navigation Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildBottomNavigationBar(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeService = context.watch<ThemeService>();
@@ -433,32 +529,34 @@ class _NavigationShellState extends State<NavigationShell> {
         ? Colors.white.withValues(alpha: themeService.glassBorder)
         : Colors.black.withValues(alpha: themeService.glassBorder);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Small floating + button
-        SizedBox(
-          height: 48,
-          width: 48,
-          child: FloatingActionButton(
-            heroTag: 'nav_add_customer',
-            onPressed: _openAddCustomerForm,
-            backgroundColor: AppColors.gold,
-            foregroundColor: Colors.white,
-            elevation: 4,
-            shape: const CircleBorder(),
-            child: const Icon(Icons.add_rounded, size: 28),
+    return SafeArea(
+      bottom: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Small floating + button
+          SizedBox(
+            height: 48,
+            width: 48,
+            child: FloatingActionButton(
+              heroTag: 'nav_add_customer',
+              onPressed: _openAddCustomerForm,
+              backgroundColor: AppColors.gold,
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.add_rounded, size: 28),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        // Glass Navigation
-        Container(
-          // Floating margins with SafeArea support built-in
-          margin: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            bottom: 16 + MediaQuery.paddingOf(context).bottom,
-          ),
+          const SizedBox(height: 12),
+          // Glass Navigation
+          Container(
+            // Responsive margins
+            margin: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 16,
+            ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             boxShadow: themeService.glassEnabled 
@@ -482,48 +580,65 @@ class _NavigationShellState extends State<NavigationShell> {
             child: themeService.glassEnabled
                 ? BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: themeService.glassBlur, sigmaY: themeService.glassBlur),
-                    child: Container(
-                      height: 66,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: glassColor,
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: borderColor, width: 1.0),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
-                          _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
-                          _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
-                          _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
-                          _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
-                        ],
-                      ),
-                    ),
+                    child: _buildScrollableNavContent(glassColor, borderColor, isDark),
                   )
-                : Container(
-                    height: 66,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surface : Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: isDark ? Colors.white12 : Colors.black12, width: 1.0),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
-                        _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
-                        _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
-                        _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
-                        _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
-                      ],
+                : _buildScrollableNavContent(isDark ? AppColors.surface : Colors.white, isDark ? Colors.white12 : Colors.black12, isDark),
+          ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScrollableNavContent(Color bgColor, Color bColor, bool isDark) {
+    return Container(
+      height: 66,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: bColor, width: 1.0),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            controller: _navScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Stack(
+                children: [
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    left: _pillPosition,
+                    top: 8,
+                    bottom: 8,
+                    width: _pillWidth,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
                   ),
-          ),
-        ),
-      ],
+                  Row(
+                    key: _rowKey,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _mobileNavItem(0, Icons.dashboard_outlined, Icons.dashboard_rounded, 'Dashboard', isDark),
+                      _mobileNavItem(1, Icons.people_outline_rounded, Icons.people_rounded, 'Customers', isDark),
+                      _mobileNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month_rounded, 'Follow-ups', isDark),
+                      _mobileNavItem(3, Icons.notifications_none_rounded, Icons.notifications_rounded, 'Notifications', isDark),
+                      _mobileNavItem(4, Icons.settings_outlined, Icons.settings_rounded, 'Settings', isDark),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -575,40 +690,49 @@ class _NavigationShellState extends State<NavigationShell> {
     }
 
     return InkWell(
-      onTap: () => setState(() => _selectedIndex = index),
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: SizedBox(
-        width: 64,
+      key: _navKeys[index],
+      onTap: () => _onNavItemTapped(index),
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              padding: EdgeInsets.symmetric(horizontal: isSelected ? 16 : 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppRadius.xxl),
-              ),
-              child: badgeOverlay(Icon(icon, color: color, size: 24)),
-            ),
+            badgeOverlay(Icon(icon, color: color, size: 24)),
             const SizedBox(height: 4),
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: isSelected ? 1.0 : 0.8,
-              child: Text(
-                 label,
-                 style: GoogleFonts.poppins(
-                   fontSize: 10,
-                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                   color: color,
-                 ),
-                 overflow: TextOverflow.ellipsis,
-              ),
+            Text(
+               label,
+               style: GoogleFonts.poppins(
+                 fontSize: 10,
+                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                 color: color,
+               ),
+               overflow: TextOverflow.ellipsis,
+               maxLines: 1,
             ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
