@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import '../services/auth_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
 import '../screens/more_screen.dart';
@@ -12,6 +15,12 @@ class ProfileMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final name = auth.displayName;
+    final roleLabel = auth.displayRole;
+    final branch = auth.displayBranch;
+    final roleAbbr = auth.roleAbbr;
+
     return MenuAnchor(
       alignmentOffset: const Offset(-40, 10),
       style: MenuStyle(
@@ -68,29 +77,44 @@ class ProfileMenuButton extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                AppConstants.gmName,
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      roleAbbr,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                AppConstants.gmTitle,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
+              if (roleLabel.isNotEmpty)
+                Text(
+                  roleLabel,
+                  style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textSecondary),
                 ),
-              ),
               const SizedBox(height: 4),
               Text(
-                AppConstants.branch,
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: AppColors.goldDark,
-                  fontWeight: FontWeight.w600,
-                ),
+                branch,
+                style: GoogleFonts.poppins(fontSize: 11, color: AppColors.goldDark, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -107,11 +131,11 @@ class ProfileMenuButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Name: ${AppConstants.gmName}', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
+                    Text('Name: $name', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
                     const SizedBox(height: 8),
-                    Text('Role: ${AppConstants.gmTitle}', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
+                    Text('Role: ${roleLabel.isNotEmpty ? roleLabel : roleAbbr}', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
                     const SizedBox(height: 8),
-                    Text('Branch: ${AppConstants.branch}', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
+                    Text('Branch: $branch', style: GoogleFonts.poppins(color: AppColors.textPrimary)),
                   ],
                 ),
                 actions: [
@@ -155,18 +179,35 @@ class ProfileMenuButton extends StatelessWidget {
         ),
         const Divider(),
         MenuItemButton(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Logout functionality will be implemented with Auth integration.', style: GoogleFonts.poppins()),
-                backgroundColor: AppColors.statusRed,
-              ),
-            );
-          },
+          onPressed: () => _confirmSignOut(context),
           leadingIcon: Icon(Icons.logout, color: AppColors.statusRed, size: 20),
-          child: Text('Logout', style: GoogleFonts.poppins(color: AppColors.statusRed)),
+          child: Text('Sign Out', style: GoogleFonts.poppins(color: AppColors.statusRed)),
         ),
       ],
+    );
+  }
+
+  void _confirmSignOut(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Sign Out', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+        content: Text('Are you sure you want to sign out?', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<AuthService>().signOut();
+            },
+            child: Text('Sign Out', style: GoogleFonts.poppins(color: AppColors.statusRed, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
     );
   }
 }

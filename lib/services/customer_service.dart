@@ -341,9 +341,17 @@ class CustomerService extends ChangeNotifier {
 
     try {
       debugPrint('[CS] addCustomer: ${customer.customerName}');
+
+      // Attach the current authenticated user as creator for attribution
+      final currentUserId = _supabase.auth.currentUser?.id;
+      final Map<String, dynamic> payload = customer.toJson();
+      if (currentUserId != null) {
+        payload['created_by'] = currentUserId;
+      }
+
       final insertedRow = await _supabase
           .from('customers')
-          .insert(customer.toJson())
+          .insert(payload)
           .select()
           .single();
 
@@ -708,6 +716,27 @@ class CustomerService extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Clears all in-memory customer data when the user signs out.
+  /// The next sign-in will re-initialise the service from Supabase.
+  void resetForLogout() {
+    _customers = [];
+    _searchQuery = '';
+    _sortMode = SortMode.newest;
+    _isLoading = false;
+    _isSyncing = false;
+    _errorMessage = null;
+    totalCustomers = 0;
+    todayLeads = 0;
+    bookedCustomers = 0;
+    registrationCompleted = 0;
+    followUpsTodayCount = 0;
+    overdueFollowUpsCount = 0;
+    upcomingFollowUpsCount = 0;
+    completedFollowUpsCount = 0;
+    readNotificationIds.clear();
     notifyListeners();
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/navigation_shell.dart';
+import 'screens/login_screen.dart';
+import 'services/auth_service.dart';
 import 'services/customer_service.dart';
 import 'services/property_service.dart';
 import 'services/theme_service.dart';
@@ -48,6 +50,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => CustomerService()),
         ChangeNotifierProvider(create: (_) => PropertyService()),
         ChangeNotifierProvider(create: (_) => ThemeService()),
@@ -91,11 +94,10 @@ class _McpAvadiAppState extends State<McpAvadiApp> {
 
   void _navigateToCustomer(String customerId) {
     if (navigatorKey.currentContext == null) return;
-    
-    // Find customer and navigate
+
     final service = Provider.of<CustomerService>(navigatorKey.currentContext!, listen: false);
     final customer = service.allCustomersUnfiltered.where((c) => c.id == customerId).firstOrNull;
-    
+
     if (customer != null) {
       navigatorKey.currentState?.push(
         MaterialPageRoute(
@@ -116,7 +118,70 @@ class _McpAvadiAppState extends State<McpAvadiApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeService.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const NavigationShell(),
+      home: const _AuthGate(),
     );
   }
 }
+
+/// Root widget that decides between [LoginScreen] and [NavigationShell]
+/// based on the current [AuthService] state.
+///
+/// Rebuilds automatically whenever the auth state changes so session
+/// persistence, login, and logout are all handled in one place.
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+
+    if (!auth.isSignedIn) {
+      return const LoginScreen();
+    }
+
+    // Profile is still loading — show a branded splash
+    if (auth.isLoadingProfile) {
+      return const _SplashScreen();
+    }
+
+    return const NavigationShell();
+  }
+}
+
+/// Minimal branded loading screen shown while the profile is fetched
+/// after authentication succeeds.
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.primaryDark,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              AppConstants.logoAsset,
+              width: 64,
+              height: 64,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.apartment_rounded,
+                color: AppColors.gold,
+                size: 56,
+              ),
+            ),
+            const SizedBox(height: 24),
+            CircularProgressIndicator(color: AppColors.gold, strokeWidth: 2.5),
+            const SizedBox(height: 16),
+            Text(
+              'Loading profile…',
+              style: TextStyle(color: Colors.white54, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

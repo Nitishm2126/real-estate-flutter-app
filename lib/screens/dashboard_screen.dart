@@ -8,6 +8,7 @@ import '../models/customer.dart';
 import '../screens/customers_screen.dart';
 import '../screens/follow_up_list_screen.dart';
 import '../screens/pdf_report_screen.dart';
+import '../services/auth_service.dart';
 import '../services/customer_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
@@ -393,14 +394,55 @@ class _HeaderAndWelcome extends StatelessWidget {
                             style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            AppConstants.gmName,
-                            style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800, letterSpacing: -0.3),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            AppConstants.gmTitle,
-                            style: GoogleFonts.poppins(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w600),
+                          Consumer<AuthService>(
+                            builder: (context, auth, _) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  auth.displayName.isNotEmpty
+                                      ? auth.displayName
+                                      : AppConstants.gmName,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    if (auth.roleAbbr.isNotEmpty)
+                                      Container(
+                                        margin: const EdgeInsets.only(right: 8),
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.gold.withValues(alpha: 0.25),
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: Text(
+                                          auth.roleAbbr,
+                                          style: GoogleFonts.poppins(
+                                            color: AppColors.gold,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    Text(
+                                      auth.displayRole.isNotEmpty
+                                          ? auth.displayRole
+                                          : AppConstants.gmTitle,
+                                      style: GoogleFonts.poppins(
+                                        color: AppColors.gold,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.lg),
                           Row(

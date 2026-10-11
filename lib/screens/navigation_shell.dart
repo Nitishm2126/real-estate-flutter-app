@@ -12,6 +12,7 @@ import '../models/notification_item.dart';
 import '../screens/pdf_report_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/settings_screen.dart';
+import '../services/auth_service.dart';
 import '../services/customer_service.dart';
 
 import '../utils/constants.dart';
@@ -459,6 +460,11 @@ class _NavigationShellState extends State<NavigationShell> {
   }
 
   Widget _buildSidebarFooter(bool extended) {
+    final auth = context.read<AuthService>();
+    final name = auth.displayName;
+    final branch = auth.displayBranch;
+    final roleAbbr = auth.roleAbbr;
+
     if (!extended) {
       return CircleAvatar(
         radius: 18,
@@ -507,7 +513,7 @@ class _NavigationShellState extends State<NavigationShell> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  AppConstants.gmName,
+                  name,
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontSize: 12,
@@ -515,13 +521,38 @@ class _NavigationShellState extends State<NavigationShell> {
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text(
-                  AppConstants.branch,
-                  style: GoogleFonts.poppins(
-                    color: AppColors.textOnDarkMuted,
-                    fontSize: 9,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    if (roleAbbr.isNotEmpty) ...
+                      [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            roleAbbr,
+                            style: GoogleFonts.poppins(
+                              color: AppColors.gold,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                    Expanded(
+                      child: Text(
+                        branch,
+                        style: GoogleFonts.poppins(
+                          color: AppColors.textOnDarkMuted,
+                          fontSize: 9,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

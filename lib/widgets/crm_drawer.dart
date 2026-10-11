@@ -1,9 +1,15 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import '../services/auth_service.dart';
 import '../utils/constants.dart';
 import '../utils/theme.dart';
 
 /// Professional, brand-aligned Navigation Drawer for MCP Avadi CRM.
+///
+/// Shows the authenticated user name, role, and branch in the header.
+/// Includes a Sign Out action at the bottom.
 class CRMDrawer extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemSelected;
@@ -16,6 +22,8 @@ class CRMDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+
     return Drawer(
       backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
@@ -31,50 +39,128 @@ class CRMDrawer extends StatelessWidget {
               right: 20,
             ),
             color: AppColors.primaryDark,
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(AppRadius.xs),
-                  ),
-                  child: Image.asset(
-                    AppConstants.logoAsset,
-                    width: 36,
-                    height: 36,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.apartment_rounded,
-                      color: AppColors.gold,
-                      size: 28,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppConstants.appName,
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(AppRadius.xs),
+                      ),
+                      child: Image.asset(
+                        AppConstants.logoAsset,
+                        width: 36,
+                        height: 36,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.apartment_rounded,
+                          color: AppColors.gold,
+                          size: 28,
                         ),
                       ),
-                      Text(
-                        'Real Estate CRM',
-                        style: GoogleFonts.poppins(
-                          color: AppColors.gold,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            AppConstants.appName,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            'Real Estate CRM',
+                            style: GoogleFonts.poppins(
+                              color: AppColors.gold,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (auth.isSignedIn) ...[
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white12),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                        child: ClipOval(
+                          child: Image.asset(
+                            AppConstants.photoAsset,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.person_rounded,
+                              color: AppColors.gold,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              auth.displayName,
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.gold.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    auth.roleAbbr,
+                                    style: GoogleFonts.poppins(
+                                      color: AppColors.gold,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    auth.displayBranch,
+                                    style: GoogleFonts.poppins(
+                                      color: Colors.white54,
+                                      fontSize: 10,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -100,23 +186,62 @@ class CRMDrawer extends StatelessWidget {
               ],
             ),
           ),
-          // Subtle pinned footer matching theme colors
+          // Sign Out footer
           const Divider(),
+          _signOutTile(context),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20),
+            padding: const EdgeInsets.only(bottom: 16, top: 4),
             child: Text(
               'Designed & Developed by Nitish',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+                color: AppColors.textMuted,
                 letterSpacing: 0.2,
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _signOutTile(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.logout_rounded, color: AppColors.statusRed, size: 22),
+      title: Text(
+        'Sign Out',
+        style: GoogleFonts.poppins(
+          color: AppColors.statusRed,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
+      onTap: () {
+        Navigator.pop(context); // Close drawer
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: Text('Sign Out', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            content: Text('Are you sure you want to sign out?', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Cancel', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  await context.read<AuthService>().signOut();
+                },
+                child: Text('Sign Out', style: GoogleFonts.poppins(color: AppColors.statusRed, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

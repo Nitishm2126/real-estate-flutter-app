@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../screens/more_screen.dart';
+import '../services/auth_service.dart';
 import '../services/customer_service.dart';
 import '../services/fcm_service.dart';
 import '../services/notification_service.dart';
@@ -52,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final service = context.watch<CustomerService>();
     final themeService = context.watch<ThemeService>();
+    final auth = context.watch<AuthService>();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -166,24 +168,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: AppSpacing.lg),
 
           // ── BUSINESS SECTION ─────────────────────────────────────
-          _sectionHeader('BUSINESS'),
+          _sectionHeader('ACCOUNT & BUSINESS'),
           _card([
             _infoTile(
-              icon: Icons.apartment_rounded,
-              title: 'Branch Details',
-              content: '${AppConstants.companyFullName}\n${AppConstants.branch}',
+              icon: Icons.person_rounded,
+              title: 'Signed-in As',
+              content: auth.displayName.isNotEmpty
+                  ? '${auth.displayName}\n${auth.displayRole}'
+                  : AppConstants.gmName,
             ),
             const Divider(),
             _infoTile(
-              icon: Icons.person_rounded,
-              title: 'GM Sales Representative',
-              content: '${AppConstants.gmName}\n${AppConstants.gmTitle}',
+              icon: Icons.badge_rounded,
+              title: 'Role',
+              content: auth.roleAbbr.isNotEmpty ? auth.roleAbbr : 'GM',
+            ),
+            const Divider(),
+            _infoTile(
+              icon: Icons.apartment_rounded,
+              title: 'Branch Details',
+              content: '${AppConstants.companyFullName}\n${auth.displayBranch}',
             ),
             const Divider(),
             _infoTile(
               icon: Icons.phone_android_rounded,
               title: 'Avadi Office Contact',
               content: '+91 72002 89643',
+            ),
+            const Divider(),
+            _actionTile(
+              icon: Icons.logout_rounded,
+              title: 'Sign Out',
+              subtitle: 'Sign out of your account',
+              iconColor: AppColors.statusRed,
+              titleColor: AppColors.statusRed,
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.surface,
+                    title: Text('Sign Out', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                    content: Text('Are you sure you want to sign out?', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text('Cancel', style: GoogleFonts.poppins(color: AppColors.textSecondary)),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(ctx);
+                          await auth.signOut();
+                        },
+                        child: Text('Sign Out', style: GoogleFonts.poppins(color: AppColors.statusRed, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ]),
 
@@ -622,8 +663,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required String subtitle,
     Widget? trailing,
+    Color? iconColor,
+    Color? titleColor,
     required VoidCallback onTap,
   }) {
+    final effectiveIconColor = iconColor ?? AppColors.primary;
+    final effectiveTitleColor = titleColor ?? AppColors.textPrimary;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -633,10 +678,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: effectiveIconColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(AppRadius.xs),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 20),
+              child: Icon(icon, color: effectiveIconColor, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -648,7 +693,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: effectiveTitleColor,
                     ),
                   ),
                   Text(
@@ -672,6 +717,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
 
   Widget _infoTile({
     required IconData icon,
